@@ -1,0 +1,47 @@
+ESTRUCTURA PAP
+
+CUNDY CROSH SOGA CUDA'S EDITION
+
+CARACTERISTICAS
+- Eliminar bloques tocando
+- Tablero --> definido por el usuario
+- Ejecucion manual(m) y ejecucion automatica(a)
+- Dificultad facil(1) y dificil(2)
+
+GLOBAL
+- Vidas 5
+- bloque vacio {0}
+- bloques {1, 2, 3, 4, 5, 6}
+- b especiales {B, T, R}, (R1, R2...)
+- tablero --> N * M
+- accion del usuario --> fil, col --> [F, C]
+//Puntuacion (opcional)
+
+
+MAIN 
+- Obtener datos del usuario
+	- Dimension del tablero
+	- Modo de ejecucion
+	- Modo de dificultad
+
+- Obtener caracteristicas de la grafica del usuario 
+
+- Bucle principal de juego - fin 
+	- Ejecucion de los kernel
+	- Mostrar tablero actualizado
+	- Recoger accion del usuario (fila, columna)
+
+KERNEL
+- Generar bloques aleatorios
+- Caida de las piezas en el tablero
+- Eliminar bloques por combinacion
+	- generar(bomba, tnt, rompecabezas)
+	- restar vidas
+- Accion bomba
+- Accion tnt
+- Accion rompecabezas
+
+C++
+- Interfaz gráfica (lib win32) / DirectX
+- Investigar mas
+
