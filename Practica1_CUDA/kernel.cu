@@ -5,18 +5,35 @@
 #include <stdlib.h>
 
 const int bloques[6] = {1, 2, 3, 4, 5, 6};
+__constant__ int dev_N;
+__constant__ int dev_DIF;
+
+int vidas = 0;
+int eje_x = -1;
+int eje_y = -1;
+int N = 0;
+int M = 0;
+int dif;
 
 __global__ void test_function() {
-	printf("Hola Mundo");
+	//printf("Hola Mundo");
 }
 
 __global__ void test() {
-	printf("Only test");
+	//printf("Only test");
 }
 
 __global__ void init_tablero(int* punteroTablero) {
 	int columna = (blockIdx.x * blockDim.x) + threadIdx.x;
 	int fila = (blockIdx.y * blockDim.y) + threadIdx.y;
+
+	int pos = dev_N * fila + columna;
+
+	printf("%d - ", pos);
+	punteroTablero[pos] = 1;
+	if (punteroTablero[pos] == 0) {
+		//punteroTablero[pos] == 1 + rand() / (RAND_MAX / (dev_DIF - 1 + 1) + 1);
+	}
 }
 
 void update() {
@@ -24,15 +41,15 @@ void update() {
 	test <<<1, 10>>> ();
 }
 
-void vaciar_tablero(int* tablero, int N, int M) {
+void vaciar_tablero(int* tablero) {
 	for (int i = 0; i < N * M; i++) {
 		tablero[i] = 0;
 	}
 }
 
-void show_tablero(int* tablero, int N, int M) {
+void show_tablero(int* tablero) {
 	for (int i = 0; i < N; i++) {
-		printf("\n| ");
+		printf("\n\n| ");
 		for (int j = 0; j < M; j++) {
 			printf("%d | ", tablero[(i * N) + j]);
 		}
@@ -48,44 +65,48 @@ int main(int argc, const char* argv[]) {
 	//Comando ./cundy -a 2 50 10
 
 	//Variables 
-	int vidas = 1;
-	int eje_x = -1;
-	int eje_y = -1;
+	vidas = 1;
 
-	int N = 10;
-	int M = 10;
+	N = 10;
+	M = 10;
+	dif = 6;
 	int SIZE = N * M * sizeof(int);
 	int* h_tablero = (int*) malloc(SIZE);
 
-	vaciar_tablero(h_tablero, N, M);
-	show_tablero(h_tablero, N, M);
+	vaciar_tablero(h_tablero);
+	show_tablero(h_tablero);
 
 	//Punteros GPU
 	int* dev_tablero;
+	cudaMemcpyToSymbol(dev_DIF, &dif, sizeof(int));
+	cudaMemcpyToSymbol(dev_N, &N, sizeof(int));
 	cudaMalloc((void**)&dev_tablero, SIZE);
 
 	//Copiar los datos del host a la CPU
 	cudaMemcpy(dev_tablero, h_tablero, SIZE, cudaMemcpyHostToDevice);
 
 	dim3 blocksInGrid(1);
-	dim3 threadsInBlock(N, M);
+	dim3 threadsInBlock(N);
+	init_tablero<<<blocksInGrid, threadsInBlock>>>(dev_tablero);
 
-	//init_tablero<<<blocksInGrid, threadsInBlock>>>();
+	cudaMemcpy(h_tablero, dev_tablero, SIZE, cudaMemcpyDeviceToHost);
+
+	show_tablero(h_tablero);
 	
 
 	//Bucle principal
 	while (vidas > 0) {
 
-		printf("Introduce el numero de columna: ");
+		printf("\nIntroduce el numero de columna: ");
 		scanf("%d", &eje_x);
-		printf("Introduce el numero de fila: ");
+		printf("\nIntroduce el numero de fila: ");
 		scanf("%d", &eje_y);
 
 		printf("%d -- %d\n", eje_x, eje_y);
 
 		update();
 
-		show_tablero(h_tablero, N, M);
+		show_tablero(h_tablero);
 		vidas--;
 	}
 
