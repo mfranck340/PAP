@@ -23,18 +23,23 @@ __global__ void test() {
 	//printf("Only test");
 }
 
+void generar_random(int* punteroFichas) {
+	for (int i = 0; i < M; i++) {
+		punteroFichas[i] = 1 + rand() % 6;
+	}
+}
+
 __global__ void bajar_fichas(int* punteroTablero) {
 	int columna = (blockIdx.x * blockDim.x) + threadIdx.x;
 	int fila = (blockIdx.y * blockDim.y) + threadIdx.y;
 
 	int pos = (dev_N * dev_M - threadIdx.x) - 1;
 
-	for (int i = pos; i >= 0; i -= dev_M) {
+	for (int i = pos; i >= dev_M; i -= dev_M) {
 		if (punteroTablero[i] == 0) {
 			if (punteroTablero[i - dev_M] != 0) {
 				punteroTablero[i] = punteroTablero[i - dev_M];
 				punteroTablero[i - dev_M] = 0;
-				printf("IUQWERTYHGTHYGTRGTHYYJHTGFGTH %d\n", punteroTablero[i - dev_M]);
 			}
 		}
 	}
@@ -92,10 +97,7 @@ int main(int argc, const char* argv[]) {
 	int* h_tablero = (int*) malloc(SIZE);
 	int* h_fichas = (int*) malloc(size_fila);
 
-	for (int i = 0; i < M; i++) {
-		h_fichas[i] = 1 + rand() % 6;
-		printf("%d", h_fichas[i]);
-	}
+	generar_random(h_fichas);
 
 	vaciar_tablero(h_tablero);
 	mostrar_tablero(h_tablero);
@@ -115,18 +117,25 @@ int main(int argc, const char* argv[]) {
 
 	dim3 blocksInGrid(1);
 	dim3 threadsInBlock(N);
-	generar_fichas<<<blocksInGrid, threadsInBlock>>>(dev_tablero, dev_fichas);
 
-	cudaMemcpy(h_tablero, dev_tablero, SIZE, cudaMemcpyDeviceToHost);
+	for (int i = 0; i < N; i++) {
+		generar_fichas<<<blocksInGrid, threadsInBlock>>>(dev_tablero, dev_fichas);
 
-	cudaMemcpy(dev_tablero, h_tablero, SIZE, cudaMemcpyHostToDevice);
+		cudaMemcpy(h_tablero, dev_tablero, SIZE, cudaMemcpyDeviceToHost);
 
-	bajar_fichas<<<blocksInGrid, threadsInBlock>>>(dev_tablero);
+		mostrar_tablero(h_tablero);
 
-	cudaMemcpy(h_tablero, dev_tablero, SIZE, cudaMemcpyDeviceToHost);
+		cudaMemcpy(dev_tablero, h_tablero, SIZE, cudaMemcpyHostToDevice);
 
-	mostrar_tablero(h_tablero);
-	
+		bajar_fichas<<<blocksInGrid, threadsInBlock>>>(dev_tablero);
+
+		cudaMemcpy(h_tablero, dev_tablero, SIZE, cudaMemcpyDeviceToHost);
+
+		mostrar_tablero(h_tablero);
+
+		generar_random(h_fichas);
+		cudaMemcpy(dev_fichas, h_fichas, size_fila, cudaMemcpyHostToDevice);
+	}
 
 	//Bucle principal
 	while (vidas > 0) {
