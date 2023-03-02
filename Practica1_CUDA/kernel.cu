@@ -4,8 +4,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-const int bloques[6] = {1, 2, 3, 4, 5, 6};
 __constant__ int dev_N;
+__constant__ int dev_M;
 __constant__ int dev_DIF;
 
 int vidas = 0;
@@ -23,16 +23,33 @@ __global__ void test() {
 	//printf("Only test");
 }
 
-__global__ void init_tablero(int* punteroTablero) {
+__global__ void bajar_fichas(int* punteroTablero) {
+	int columna = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int fila = (blockIdx.y * blockDim.y) + threadIdx.y;
+
+	int pos = (dev_N * dev_M - threadIdx.x) - 1;
+
+	for (int i = pos; i >= 0; i -= dev_M) {
+		if (punteroTablero[i] == 0) {
+			if (punteroTablero[i - dev_M] != 0) {
+				punteroTablero[i] = punteroTablero[i - dev_M];
+				punteroTablero[i - dev_M] = 0;
+				printf("IUQWERTYHGTHYGTRGTHYYJHTGFGTH %d\n", punteroTablero[i - dev_M]);
+			}
+		}
+	}
+
+	printf("%d. %d\n", threadIdx.x, pos);
+}
+
+__global__ void generar_fichas(int* punteroTablero, int* punteroFichas) {
 	int columna = (blockIdx.x * blockDim.x) + threadIdx.x;
 	int fila = (blockIdx.y * blockDim.y) + threadIdx.y;
 
 	int pos = dev_N * fila + columna;
 
-	printf("%d - ", pos);
-	punteroTablero[pos] = 1;
 	if (punteroTablero[pos] == 0) {
-		//punteroTablero[pos] == 1 + rand() / (RAND_MAX / (dev_DIF - 1 + 1) + 1);
+		punteroTablero[pos] = punteroFichas[pos];
 	}
 }
 
@@ -47,7 +64,7 @@ void vaciar_tablero(int* tablero) {
 	}
 }
 
-void show_tablero(int* tablero) {
+void mostrar_tablero(int* tablero) {
 	for (int i = 0; i < N; i++) {
 		printf("\n\n| ");
 		for (int j = 0; j < M; j++) {
@@ -71,32 +88,48 @@ int main(int argc, const char* argv[]) {
 	M = 10;
 	dif = 6;
 	int SIZE = N * M * sizeof(int);
+	int size_fila = M * sizeof(int);
 	int* h_tablero = (int*) malloc(SIZE);
+	int* h_fichas = (int*) malloc(size_fila);
+
+	for (int i = 0; i < M; i++) {
+		h_fichas[i] = 1 + rand() % 6;
+		printf("%d", h_fichas[i]);
+	}
 
 	vaciar_tablero(h_tablero);
-	show_tablero(h_tablero);
+	mostrar_tablero(h_tablero);
 
 	//Punteros GPU
 	int* dev_tablero;
+	int* dev_fichas;
 	cudaMemcpyToSymbol(dev_DIF, &dif, sizeof(int));
 	cudaMemcpyToSymbol(dev_N, &N, sizeof(int));
+	cudaMemcpyToSymbol(dev_M, &M, sizeof(int));
 	cudaMalloc((void**)&dev_tablero, SIZE);
+	cudaMalloc((void**)&dev_fichas, SIZE);
 
 	//Copiar los datos del host a la CPU
 	cudaMemcpy(dev_tablero, h_tablero, SIZE, cudaMemcpyHostToDevice);
+	cudaMemcpy(dev_fichas, h_fichas, size_fila, cudaMemcpyHostToDevice);
 
 	dim3 blocksInGrid(1);
 	dim3 threadsInBlock(N);
-	init_tablero<<<blocksInGrid, threadsInBlock>>>(dev_tablero);
+	generar_fichas<<<blocksInGrid, threadsInBlock>>>(dev_tablero, dev_fichas);
 
 	cudaMemcpy(h_tablero, dev_tablero, SIZE, cudaMemcpyDeviceToHost);
 
-	show_tablero(h_tablero);
+	cudaMemcpy(dev_tablero, h_tablero, SIZE, cudaMemcpyHostToDevice);
+
+	bajar_fichas<<<blocksInGrid, threadsInBlock>>>(dev_tablero);
+
+	cudaMemcpy(h_tablero, dev_tablero, SIZE, cudaMemcpyDeviceToHost);
+
+	mostrar_tablero(h_tablero);
 	
 
 	//Bucle principal
 	while (vidas > 0) {
-
 		printf("\nIntroduce el numero de columna: ");
 		scanf("%d", &eje_x);
 		printf("\nIntroduce el numero de fila: ");
@@ -106,13 +139,17 @@ int main(int argc, const char* argv[]) {
 
 		update();
 
-		show_tablero(h_tablero);
+		mostrar_tablero(h_tablero);
 		vidas--;
 	}
-
 
 	//Liberar memoria
 	cudaFree(dev_tablero);
 	free(h_tablero);
+
+	//Salida del programa
+	printf("\nPulsa INTRO para finalizar...");
+	fflush(stdin);
+	char tecla = getchar();
 	return 0;
 }
