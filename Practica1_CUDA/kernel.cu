@@ -51,65 +51,68 @@ __global__ void generar_fichas(int* punteroTablero, int* punteroFichas) {
 	}
 }
 
-__device__ bool eliminar(int* punteroTablero, int objetivo, int fila, int columna) {
-	int pos = dev_N * fila + columna;
-
-	if (objetivo == pos) {
-		return true;
+__device__ void eliminar(int* punteroTablero, int* bloquesCoincidentes, int objetivo, int posicionActual) {
+	if (bloquesCoincidentes[posicionActual] == 1 && punteroTablero[posicionActual] != 0) {
+		punteroTablero[posicionActual] = 0;
 	}
 
-	bool encontrado = false;
-	
 	//Derecha
-	if (!encontrado && columna < (dev_M - 1)) {
-		if (punteroTablero[pos + 1] == punteroTablero[objetivo]) {
-			encontrado = eliminar(punteroTablero, objetivo, fila, columna + 1);
+	if ((posicionActual + 1 <= (dev_N * dev_M)) && ((posicionActual + 1) % dev_M != 0)) {
+		if (bloquesCoincidentes[posicionActual + 1] == 1) {
+			punteroTablero[posicionActual + 1] = 0;
+			bloquesCoincidentes[posicionActual + 1] = 0;
+			eliminar(punteroTablero, bloquesCoincidentes, objetivo, posicionActual + 1);
 		}
 	}
 
 	//Izquierda
-	if (!encontrado && (columna - 1) > 0) {
-		if (punteroTablero[pos - 1] == punteroTablero[objetivo]) {
-			encontrado = eliminar(punteroTablero, objetivo, fila, columna - 1);
+	if ((posicionActual - 1 >= 0) && ((posicionActual - 1) % dev_M != (dev_M - 1))) {
+		if (bloquesCoincidentes[posicionActual - 1] == 1) {
+			punteroTablero[posicionActual - 1] = 0;
+			bloquesCoincidentes[posicionActual - 1] = 0;
+			eliminar(punteroTablero, bloquesCoincidentes, objetivo, posicionActual - 1);
 		}
 	}
 
 	//Abajo
-	if (!encontrado && fila < (dev_N - 1)) {
-		if (punteroTablero[pos + dev_M] == punteroTablero[objetivo]) {
-			encontrado = eliminar(punteroTablero, objetivo, fila + 1, columna);
+	if (posicionActual + dev_M < (dev_N * dev_M)) {
+		if (bloquesCoincidentes[posicionActual + dev_M] == 1) {
+			punteroTablero[posicionActual + dev_M] = 0;
+			bloquesCoincidentes[posicionActual + dev_M] = 0;
+			eliminar(punteroTablero, bloquesCoincidentes, objetivo, posicionActual + dev_M);
 		}
 	}
 
 	//Arriba
-	if (!encontrado && (fila - 1) > 0) {
-		if (punteroTablero[pos - dev_M] == punteroTablero[objetivo]) {
-			encontrado = eliminar(punteroTablero, objetivo, fila - 1, columna);
+	if (posicionActual - dev_M >= 0) {
+		if (bloquesCoincidentes[posicionActual - dev_M] == 1) {
+			punteroTablero[posicionActual - dev_M] = 0;
+			bloquesCoincidentes[posicionActual - dev_M] = 0;
+			eliminar(punteroTablero, bloquesCoincidentes, objetivo, posicionActual - dev_M);
 		}
 	}
-
-	return encontrado;
 }
 
-__global__ void eliminar_fichas(int* punteroTablero, int* coordenadas) {
+__global__ void eliminar_fichas(int* punteroTablero, int* coordenadas, int* bloquesCoincidentes) {
 	int columna = (blockIdx.x * blockDim.x) + threadIdx.x;
 	int fila = (blockIdx.y * blockDim.y) + threadIdx.y;
 
 	int pos = dev_N * fila + columna;
-	int objetivo = N * coordenadas[0] + coordenadas[1];
+	int objetivo = dev_N * coordenadas[0] + coordenadas[1];
 
 	int bloque = punteroTablero[objetivo];
 
 	bool borrar = false;
 
 	if (punteroTablero[pos] == bloque) {
-		borrar = eliminar(punteroTablero, objetivo, fila, columna);
+		printf("%d\n", pos);
+		bloquesCoincidentes[pos] = 1;
 	}
 
 	__syncthreads();
-	
-	if (borrar) {
-		punteroTablero[pos] = 0;
+
+	if (pos == objetivo) {
+		eliminar(punteroTablero, bloquesCoincidentes, objetivo, objetivo);
 	}
 }
 
@@ -142,7 +145,7 @@ int main(int argc, const char* argv[]) {
 	//Comando ./cundy -a 2 50 10
 
 	//Variables 
-	vidas = 1;
+	vidas = 3;
 
 	N = 10;
 	M = 10;
@@ -153,25 +156,33 @@ int main(int argc, const char* argv[]) {
 	int* h_tablero = (int*) malloc(SIZE);
 	int* h_fichas = (int*) malloc(size_fila);
 	int* h_coordenadas = (int*) malloc(size_coordenadas);
+	int* h_bloquesCoincidentes = (int*) malloc(SIZE);
 
 	generar_random(h_fichas);
 
 	vaciar_tablero(h_tablero);
 	mostrar_tablero(h_tablero);
 
+	for (int i = 0; i < (N * M); i++) {
+		h_bloquesCoincidentes[i] = 0;
+	}
+
 	//Punteros GPU
 	int* dev_tablero;
 	int* dev_fichas;
 	int* dev_coordenadas;
+	int* dev_bloquesCoincidentes;
 	cudaMemcpyToSymbol(dev_DIF, &dif, sizeof(int));
 	cudaMemcpyToSymbol(dev_N, &N, sizeof(int));
 	cudaMemcpyToSymbol(dev_M, &M, sizeof(int));
 	cudaMalloc((void**)&dev_tablero, SIZE);
 	cudaMalloc((void**)&dev_fichas, size_fila);
+	cudaMalloc((void**)&dev_bloquesCoincidentes, SIZE);
 
 	//Copiar los datos del host a la CPU
 	cudaMemcpy(dev_tablero, h_tablero, SIZE, cudaMemcpyHostToDevice);
 	cudaMemcpy(dev_fichas, h_fichas, size_fila, cudaMemcpyHostToDevice);
+	cudaMemcpy(dev_bloquesCoincidentes, h_bloquesCoincidentes, SIZE, cudaMemcpyHostToDevice);
 
 	dim3 blocksInGrid(1);
 	dim3 threadsInBlock(N);
@@ -205,14 +216,21 @@ int main(int argc, const char* argv[]) {
 		cudaMalloc((void**)&dev_coordenadas, size_coordenadas);
 
 		cudaMemcpy(dev_coordenadas, h_coordenadas, size_coordenadas, cudaMemcpyHostToDevice);
+		cudaMemcpy(dev_bloquesCoincidentes, h_bloquesCoincidentes, SIZE, cudaMemcpyHostToDevice);
 
 		dim3 bloques(1);
 		dim3 hilos(N, M);
 
-		eliminar_fichas<<<bloques, hilos>>>(dev_tablero, dev_coordenadas);
+		eliminar_fichas<<<bloques, hilos>>>(dev_tablero, dev_coordenadas, dev_bloquesCoincidentes);
 
-		update();
+		cudaMemcpy(h_tablero, dev_tablero, SIZE, cudaMemcpyDeviceToHost);
+		cudaMemcpy(h_bloquesCoincidentes, dev_bloquesCoincidentes, SIZE, cudaMemcpyDeviceToHost);
 
+		for (int i = 0; i < (N * M); i++) {
+			h_bloquesCoincidentes[i] = 0;
+		}
+		
+		printf("\n");
 		mostrar_tablero(h_tablero);
 		vidas--;
 	}
