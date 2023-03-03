@@ -9,8 +9,6 @@ __constant__ int dev_M;
 __constant__ int dev_DIF;
 
 int vidas = 0;
-int eje_x = -1;
-int eje_y = -1;
 int N = 0;
 int M = 0;
 int dif;
@@ -30,9 +28,6 @@ void generar_random(int* punteroFichas) {
 }
 
 __global__ void bajar_fichas(int* punteroTablero) {
-	int columna = (blockIdx.x * blockDim.x) + threadIdx.x;
-	int fila = (blockIdx.y * blockDim.y) + threadIdx.y;
-
 	int pos = (dev_N * dev_M - threadIdx.x) - 1;
 
 	for (int i = pos; i >= dev_M; i -= dev_M) {
@@ -43,8 +38,6 @@ __global__ void bajar_fichas(int* punteroTablero) {
 			}
 		}
 	}
-
-	printf("%d. %d\n", threadIdx.x, pos);
 }
 
 __global__ void generar_fichas(int* punteroTablero, int* punteroFichas) {
@@ -55,6 +48,68 @@ __global__ void generar_fichas(int* punteroTablero, int* punteroFichas) {
 
 	if (punteroTablero[pos] == 0) {
 		punteroTablero[pos] = punteroFichas[pos];
+	}
+}
+
+__device__ bool eliminar(int* punteroTablero, int objetivo, int fila, int columna) {
+	int pos = dev_N * fila + columna;
+
+	if (objetivo == pos) {
+		return true;
+	}
+
+	bool encontrado = false;
+	
+	//Derecha
+	if (!encontrado && columna < (dev_M - 1)) {
+		if (punteroTablero[pos + 1] == punteroTablero[objetivo]) {
+			encontrado = eliminar(punteroTablero, objetivo, fila, columna + 1);
+		}
+	}
+
+	//Izquierda
+	if (!encontrado && (columna - 1) > 0) {
+		if (punteroTablero[pos - 1] == punteroTablero[objetivo]) {
+			encontrado = eliminar(punteroTablero, objetivo, fila, columna - 1);
+		}
+	}
+
+	//Abajo
+	if (!encontrado && fila < (dev_N - 1)) {
+		if (punteroTablero[pos + dev_M] == punteroTablero[objetivo]) {
+			encontrado = eliminar(punteroTablero, objetivo, fila + 1, columna);
+		}
+	}
+
+	//Arriba
+	if (!encontrado && (fila - 1) > 0) {
+		if (punteroTablero[pos - dev_M] == punteroTablero[objetivo]) {
+			encontrado = eliminar(punteroTablero, objetivo, fila - 1, columna);
+		}
+	}
+
+	return encontrado;
+}
+
+__global__ void eliminar_fichas(int* punteroTablero, int* coordenadas) {
+	int columna = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int fila = (blockIdx.y * blockDim.y) + threadIdx.y;
+
+	int pos = dev_N * fila + columna;
+	int objetivo = N * coordenadas[0] + coordenadas[1];
+
+	int bloque = punteroTablero[objetivo];
+
+	bool borrar = false;
+
+	if (punteroTablero[pos] == bloque) {
+		borrar = eliminar(punteroTablero, objetivo, fila, columna);
+	}
+
+	__syncthreads();
+	
+	if (borrar) {
+		punteroTablero[pos] = 0;
 	}
 }
 
@@ -94,8 +149,10 @@ int main(int argc, const char* argv[]) {
 	dif = 6;
 	int SIZE = N * M * sizeof(int);
 	int size_fila = M * sizeof(int);
+	int size_coordenadas = 2 * sizeof(int);
 	int* h_tablero = (int*) malloc(SIZE);
 	int* h_fichas = (int*) malloc(size_fila);
+	int* h_coordenadas = (int*) malloc(size_coordenadas);
 
 	generar_random(h_fichas);
 
@@ -105,11 +162,12 @@ int main(int argc, const char* argv[]) {
 	//Punteros GPU
 	int* dev_tablero;
 	int* dev_fichas;
+	int* dev_coordenadas;
 	cudaMemcpyToSymbol(dev_DIF, &dif, sizeof(int));
 	cudaMemcpyToSymbol(dev_N, &N, sizeof(int));
 	cudaMemcpyToSymbol(dev_M, &M, sizeof(int));
 	cudaMalloc((void**)&dev_tablero, SIZE);
-	cudaMalloc((void**)&dev_fichas, SIZE);
+	cudaMalloc((void**)&dev_fichas, size_fila);
 
 	//Copiar los datos del host a la CPU
 	cudaMemcpy(dev_tablero, h_tablero, SIZE, cudaMemcpyHostToDevice);
@@ -140,11 +198,18 @@ int main(int argc, const char* argv[]) {
 	//Bucle principal
 	while (vidas > 0) {
 		printf("\nIntroduce el numero de columna: ");
-		scanf("%d", &eje_x);
+		scanf("%d", &h_coordenadas[0]);
 		printf("\nIntroduce el numero de fila: ");
-		scanf("%d", &eje_y);
+		scanf("%d", &h_coordenadas[1]);
 
-		printf("%d -- %d\n", eje_x, eje_y);
+		cudaMalloc((void**)&dev_coordenadas, size_coordenadas);
+
+		cudaMemcpy(dev_coordenadas, h_coordenadas, size_coordenadas, cudaMemcpyHostToDevice);
+
+		dim3 bloques(1);
+		dim3 hilos(N, M);
+
+		eliminar_fichas<<<bloques, hilos>>>(dev_tablero, dev_coordenadas);
 
 		update();
 
