@@ -1,6 +1,7 @@
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 
+#include <curand_kernel.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -13,112 +14,116 @@ int N = 0;
 int M = 0;
 int dif;
 
-__global__ void test_function() {
-	//printf("Hola Mundo");
+__global__ void setup_kernel(curandState* state, unsigned long seed) {
+	int id = threadIdx.x;
+	curand_init(seed, id, 0, &state[id]);
 }
 
-__global__ void test() {
-	//printf("Only test");
-}
+__global__ void generar_fichas(int* dev_tablero, curandState* globalState, int* dev_fichasInf) {
+	int pos = (blockIdx.x * blockDim.x) + threadIdx.x;
 
-void generar_random(int* punteroFichas) {
-	for (int i = 0; i < M; i++) {
-		punteroFichas[i] = 1 + rand() % 6;
+	if (dev_tablero[pos] == 0) {
+		int idx = threadIdx.x;
+		curandState localState = globalState[idx];
+		float r = (curand_uniform(&localState) * dev_DIF) + 1;
+		globalState[idx] = localState;
+		dev_tablero[pos] = r;
+
+		atomicSub(&dev_fichasInf[1], 1);
 	}
 }
 
-__global__ void bajar_fichas(int* punteroTablero) {
+__global__ void bajar_fichas(int* dev_tablero) {
 	int pos = (dev_N * dev_M - threadIdx.x) - 1;
 
 	for (int i = pos; i >= dev_M; i -= dev_M) {
-		if (punteroTablero[i] == 0) {
-			if (punteroTablero[i - dev_M] != 0) {
-				punteroTablero[i] = punteroTablero[i - dev_M];
-				punteroTablero[i - dev_M] = 0;
+		if (dev_tablero[i] == 0) {
+			if (dev_tablero[i - dev_M] != 0) {
+				dev_tablero[i] = dev_tablero[i - dev_M];
+				dev_tablero[i - dev_M] = 0;
 			}
 		}
 	}
 }
 
-__global__ void generar_fichas(int* punteroTablero, int* punteroFichas) {
-	int columna = (blockIdx.x * blockDim.x) + threadIdx.x;
-	int fila = (blockIdx.y * blockDim.y) + threadIdx.y;
+__global__ void eliminar_fichas(int* dev_tablero, int* dev_tabAuxiliar, int* dev_coordenadas,  int* dev_fichaInf) {
+	int col = blockIdx.x * blockDim.x + threadIdx.x;
+	int fil = blockIdx.y * blockDim.y + threadIdx.y;
+	int idx = fil * blockDim.x + col;
+	int touch = dev_coordenadas[1] * blockDim.x + dev_coordenadas[0];
 
-	int pos = dev_N * fila + columna;
+	__shared__ int count[2];
+	count[0] = 0;
+	__syncthreads();
 
-	if (punteroTablero[pos] == 0) {
-		punteroTablero[pos] = punteroFichas[pos];
+	if (idx == touch) {
+		dev_tabAuxiliar[idx] = 0;
 	}
-}
-
-__device__ void eliminar(int* punteroTablero, int* bloquesCoincidentes, int objetivo, int posicionActual) {
-	if (bloquesCoincidentes[posicionActual] == 1 && punteroTablero[posicionActual] != 0) {
-		punteroTablero[posicionActual] = 0;
+	else if (dev_tablero[idx] == dev_tablero[touch]) {
+		atomicAdd(&count[0], 1);
+		//dev_tabAuxiliar[idx] = -1;
+		dev_tabAuxiliar[idx] = dev_tablero[idx];
 	}
-
-	//Derecha
-	if ((posicionActual + 1 <= (dev_N * dev_M)) && ((posicionActual + 1) % dev_M != 0)) {
-		if (bloquesCoincidentes[posicionActual + 1] == 1) {
-			punteroTablero[posicionActual + 1] = 0;
-			bloquesCoincidentes[posicionActual + 1] = 0;
-			eliminar(punteroTablero, bloquesCoincidentes, objetivo, posicionActual + 1);
-		}
-	}
-
-	//Izquierda
-	if ((posicionActual - 1 >= 0) && ((posicionActual - 1) % dev_M != (dev_M - 1))) {
-		if (bloquesCoincidentes[posicionActual - 1] == 1) {
-			punteroTablero[posicionActual - 1] = 0;
-			bloquesCoincidentes[posicionActual - 1] = 0;
-			eliminar(punteroTablero, bloquesCoincidentes, objetivo, posicionActual - 1);
-		}
-	}
-
-	//Abajo
-	if (posicionActual + dev_M < (dev_N * dev_M)) {
-		if (bloquesCoincidentes[posicionActual + dev_M] == 1) {
-			punteroTablero[posicionActual + dev_M] = 0;
-			bloquesCoincidentes[posicionActual + dev_M] = 0;
-			eliminar(punteroTablero, bloquesCoincidentes, objetivo, posicionActual + dev_M);
-		}
-	}
-
-	//Arriba
-	if (posicionActual - dev_M >= 0) {
-		if (bloquesCoincidentes[posicionActual - dev_M] == 1) {
-			punteroTablero[posicionActual - dev_M] = 0;
-			bloquesCoincidentes[posicionActual - dev_M] = 0;
-			eliminar(punteroTablero, bloquesCoincidentes, objetivo, posicionActual - dev_M);
-		}
-	}
-}
-
-__global__ void eliminar_fichas(int* punteroTablero, int* coordenadas, int* bloquesCoincidentes) {
-	int columna = (blockIdx.x * blockDim.x) + threadIdx.x;
-	int fila = (blockIdx.y * blockDim.y) + threadIdx.y;
-
-	int pos = dev_N * fila + columna;
-	int objetivo = dev_N * coordenadas[0] + coordenadas[1];
-
-	int bloque = punteroTablero[objetivo];
-
-	bool borrar = false;
-
-	if (punteroTablero[pos] == bloque) {
-		printf("%d\n", pos);
-		bloquesCoincidentes[pos] = 1;
+	else {
+		dev_tabAuxiliar[idx] = dev_tablero[idx];
 	}
 
 	__syncthreads();
+	count[1] = count[0];
 
-	if (pos == objetivo) {
-		eliminar(punteroTablero, bloquesCoincidentes, objetivo, objetivo);
-	}
+	bool encontrado = false;
+	do {
+		count[0] = count[1];
+		__syncthreads();
+		if (dev_tablero[idx] == dev_tablero[touch] && dev_tabAuxiliar[idx] != 0) {
+			if (col + 1 < blockDim.x && !encontrado) {
+				if (dev_tabAuxiliar[idx + 1] == 0) {
+					encontrado = true;
+				}
+			}
+			if (col - 1 >= 0 && !encontrado) {
+				if (dev_tabAuxiliar[idx - 1] == 0) {
+					encontrado = true;
+				}
+			}
+			if (fil + 1 < blockDim.y && !encontrado) {
+				if (dev_tabAuxiliar[idx + blockDim.x] == 0) {
+					encontrado = true;
+				}
+			}
+			if (fil - 1 >= 0 && !encontrado) {
+				if (dev_tabAuxiliar[idx - blockDim.x] == 0) {
+					encontrado = true;
+				}
+			}
+			if (encontrado) {
+				printf("entro");
+				atomicSub(&count[1], 1);
+				atomicAdd(&dev_fichaInf[1], 1);
+				dev_tabAuxiliar[idx] = 0;
+			}
+		}
+		__syncthreads();
+	} while (count[0] != count[1]);
+
+	/*if (idx == touch) {
+		if (dev_fichaInf[1] + 1 < 5) {
+			dev_tabAuxiliar[idx] = 0;
+			atomicAdd(&dev_fichaInf[1], 1);
+		}
+		else if (dev_fichaInf[1] + 1 == 5) dev_tabAuxiliar[idx] = 8;
+		else if (dev_fichaInf[1] + 1 == 6) dev_tabAuxiliar[idx] = 9;
+		else if (dev_fichaInf[1] + 1 >= 7) { 
+
+			dev_tabAuxiliar[idx] = 10 + rand;
+		}
+	}*/
+	//if (dev_tabAuxiliar[idx] == -1)
+		//dev_tabAuxiliar[idx] = ;
 }
 
 void update() {
-	test_function<<<1, 10>>>();
-	test <<<1, 10>>> ();
+
 }
 
 void vaciar_tablero(int* tablero) {
@@ -141,103 +146,95 @@ void mostrar_tablero(int* tablero) {
 }
 
 int main(int argc, const char* argv[]) {
-
-	//Comando ./cundy -a 2 50 10
-
+	cudaFree(0);
 	//Variables 
-	vidas = 3;
-
+	vidas = 5;
 	N = 10;
 	M = 10;
 	dif = 6;
 	int SIZE = N * M * sizeof(int);
-	int size_fila = M * sizeof(int);
-	int size_coordenadas = 2 * sizeof(int);
-	int* h_tablero = (int*) malloc(SIZE);
-	int* h_fichas = (int*) malloc(size_fila);
-	int* h_coordenadas = (int*) malloc(size_coordenadas);
-	int* h_bloquesCoincidentes = (int*) malloc(SIZE);
-
-	generar_random(h_fichas);
-
-	vaciar_tablero(h_tablero);
-	mostrar_tablero(h_tablero);
-
-	for (int i = 0; i < (N * M); i++) {
-		h_bloquesCoincidentes[i] = 0;
-	}
+	int size_coord = 2 * sizeof(int);
+	int* h_tablero = (int*)malloc(SIZE);
+	int* h_coordenadas = (int*)malloc(size_coord);
+	int* h_fichaInf = (int*)malloc(size_coord);			//0 --> nombre ficha, 1 --> fichas eliminadas
+	h_fichaInf[0] = 0;
+	h_fichaInf[1] = N * M;
 
 	//Punteros GPU
+	curandState* dev_states;
 	int* dev_tablero;
-	int* dev_fichas;
+	int* dev_resultado;
 	int* dev_coordenadas;
-	int* dev_bloquesCoincidentes;
+	int* dev_fichaInf;
 	cudaMemcpyToSymbol(dev_DIF, &dif, sizeof(int));
 	cudaMemcpyToSymbol(dev_N, &N, sizeof(int));
 	cudaMemcpyToSymbol(dev_M, &M, sizeof(int));
 	cudaMalloc((void**)&dev_tablero, SIZE);
-	cudaMalloc((void**)&dev_fichas, size_fila);
-	cudaMalloc((void**)&dev_bloquesCoincidentes, SIZE);
+	cudaMalloc((void**)&dev_resultado, SIZE);
+	cudaMalloc((void**)&dev_coordenadas, size_coord);
+	cudaMalloc((void**)&dev_fichaInf, size_coord);
+	cudaMalloc(&dev_states, N * sizeof(curandState));
 
-	//Copiar los datos del host a la CPU
+	//Inicializar tablero
+	//---------------------------------------------------------------------------------------------
+	vaciar_tablero(h_tablero);
+	mostrar_tablero(h_tablero);
 	cudaMemcpy(dev_tablero, h_tablero, SIZE, cudaMemcpyHostToDevice);
-	cudaMemcpy(dev_fichas, h_fichas, size_fila, cudaMemcpyHostToDevice);
-	cudaMemcpy(dev_bloquesCoincidentes, h_bloquesCoincidentes, SIZE, cudaMemcpyHostToDevice);
-
+	cudaMemcpy(dev_fichaInf, h_fichaInf, size_coord, cudaMemcpyHostToDevice);
 	dim3 blocksInGrid(1);
 	dim3 threadsInBlock(N);
+	setup_kernel<<<blocksInGrid, threadsInBlock>>>(dev_states, time(0));
 
-	for (int i = 0; i < N; i++) {
-		generar_fichas<<<blocksInGrid, threadsInBlock>>>(dev_tablero, dev_fichas);
-
+	while (h_fichaInf[1] != 0) {
+		generar_fichas<<<blocksInGrid, threadsInBlock>>>(dev_tablero, dev_states, dev_fichaInf);
+		
 		cudaMemcpy(h_tablero, dev_tablero, SIZE, cudaMemcpyDeviceToHost);
-
-		mostrar_tablero(h_tablero);
-
-		cudaMemcpy(dev_tablero, h_tablero, SIZE, cudaMemcpyHostToDevice);
-
+		//mostrar_tablero(h_tablero);
+		//printf("\n-----------------------------------------------------------\n");
 		bajar_fichas<<<blocksInGrid, threadsInBlock>>>(dev_tablero);
-
-		cudaMemcpy(h_tablero, dev_tablero, SIZE, cudaMemcpyDeviceToHost);
-
-		mostrar_tablero(h_tablero);
-
-		generar_random(h_fichas);
-		cudaMemcpy(dev_fichas, h_fichas, size_fila, cudaMemcpyHostToDevice);
+		cudaMemcpy(h_fichaInf, dev_fichaInf, size_coord, cudaMemcpyDeviceToHost);
 	}
-
+	//---------------------------------------------------------------------------------------------
+	printf("\n|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||\n");
+	mostrar_tablero(h_tablero);
 	//Bucle principal
+	//---------------------------------------------------------------------------------------------
+	
+
 	while (vidas > 0) {
 		printf("\nIntroduce el numero de columna: ");
 		scanf("%d", &h_coordenadas[0]);
 		printf("\nIntroduce el numero de fila: ");
 		scanf("%d", &h_coordenadas[1]);
 
-		cudaMalloc((void**)&dev_coordenadas, size_coordenadas);
-
-		cudaMemcpy(dev_coordenadas, h_coordenadas, size_coordenadas, cudaMemcpyHostToDevice);
-		cudaMemcpy(dev_bloquesCoincidentes, h_bloquesCoincidentes, SIZE, cudaMemcpyHostToDevice);
-
+		h_fichaInf[0] = h_coordenadas[1] * M + h_coordenadas[0];
+		
+		cudaMemcpy(dev_coordenadas, h_coordenadas, size_coord, cudaMemcpyHostToDevice);
 		dim3 bloques(1);
 		dim3 hilos(N, M);
-
-		eliminar_fichas<<<bloques, hilos>>>(dev_tablero, dev_coordenadas, dev_bloquesCoincidentes);
-
-		cudaMemcpy(h_tablero, dev_tablero, SIZE, cudaMemcpyDeviceToHost);
-		cudaMemcpy(h_bloquesCoincidentes, dev_bloquesCoincidentes, SIZE, cudaMemcpyDeviceToHost);
-
-		for (int i = 0; i < (N * M); i++) {
-			h_bloquesCoincidentes[i] = 0;
-		}
 		
-		printf("\n");
+		//if (h_tablero[h_fichaInf[0]] < 7)
+		//obtener_ficha<<<bloques, hilos>>>(dev_tablero, dev_fichaInf);
+
+		eliminar_fichas<<<bloques, hilos>>> (dev_tablero, dev_resultado, dev_coordenadas, dev_fichaInf);
+		cudaMemcpy(dev_tablero, dev_resultado, SIZE, cudaMemcpyDeviceToDevice);
+		cudaMemcpy(h_tablero, dev_resultado, SIZE, cudaMemcpyDeviceToHost);
+		cudaMemcpy(h_fichaInf, dev_fichaInf, size_coord, cudaMemcpyDeviceToHost);
 		mostrar_tablero(h_tablero);
+		printf("/n--%d--/n", h_fichaInf[1]);
 		vidas--;
 	}
+	//---------------------------------------------------------------------------------------------
 
 	//Liberar memoria
 	cudaFree(dev_tablero);
+	cudaFree(dev_resultado);
+	cudaFree(dev_coordenadas);
+	cudaFree(dev_fichaInf);
+	cudaFree(dev_states);
 	free(h_tablero);
+	free(h_coordenadas);
+	free(h_fichaInf);
 
 	//Salida del programa
 	printf("\nPulsa INTRO para finalizar...");
