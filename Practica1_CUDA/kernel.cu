@@ -46,26 +46,23 @@ __global__ void bajar_fichas(int* dev_tablero) {
 	}
 }
 
-__global__ void eliminar_fichas(int* dev_tablero, int* dev_tabAuxiliar, int* dev_coordenadas,  int* dev_fichaInf, curandState* globalState) {
+__global__ void eliminar_fichas(int* dev_tablero, int* dev_coordenadas,  int* dev_fichaInf, curandState* globalState) {
 	int col = blockIdx.x * blockDim.x + threadIdx.x;
 	int fil = blockIdx.y * blockDim.y + threadIdx.y;
 	int idx = fil * blockDim.x + col;
 	int touch = dev_coordenadas[1] * blockDim.x + dev_coordenadas[0];
+	int elem = dev_tablero[touch];
 
 	__shared__ int count[2];
 	count[0] = 0;
 	__syncthreads();
 
 	if (idx == touch) {
-		dev_tabAuxiliar[idx] = 0;
+		dev_tablero[idx] = 0;
 		atomicAdd(&dev_fichaInf[1], 1);
 	}
 	else if (dev_tablero[idx] == dev_tablero[touch]) {
 		atomicAdd(&count[0], 1);
-		dev_tabAuxiliar[idx] = dev_tablero[idx];
-	}
-	else {
-		dev_tabAuxiliar[idx] = dev_tablero[idx];
 	}
 
 	__syncthreads();
@@ -75,51 +72,48 @@ __global__ void eliminar_fichas(int* dev_tablero, int* dev_tabAuxiliar, int* dev
 	do {
 		count[0] = count[1];
 		__syncthreads();
-		if (dev_tablero[idx] == dev_tablero[touch] && dev_tabAuxiliar[idx] != 0) {
-			if (col + 1 < blockDim.x && !encontrado) {
-				if (dev_tabAuxiliar[idx + 1] == 0) {
-					encontrado = true;
-				}
+		if (dev_tablero[idx] == elem && dev_tablero[idx] != 0) {
+			if (col + 1 < blockDim.x && dev_tablero[idx + 1] == 0) {
+				encontrado = true;
 			}
-			if (col - 1 >= 0 && !encontrado) {
-				if (dev_tabAuxiliar[idx - 1] == 0) {
-					encontrado = true;
-				}
+			else if (col - 1 >= 0 && dev_tablero[idx - 1] == 0) {
+				encontrado = true;
 			}
-			if (fil + 1 < blockDim.y && !encontrado) {
-				if (dev_tabAuxiliar[idx + blockDim.x] == 0) {
-					encontrado = true;
-				}
+			else if (fil + 1 < blockDim.y && dev_tablero[idx + blockDim.x] == 0) {
+				encontrado = true;
 			}
-			if (fil - 1 >= 0 && !encontrado) {
-				if (dev_tabAuxiliar[idx - blockDim.x] == 0) {
-					encontrado = true;
-				}
+			else if (fil - 1 >= 0 && dev_tablero[idx - blockDim.x] == 0) {
+				encontrado = true;
 			}
+
 			if (encontrado) {
 				atomicSub(&count[1], 1);
 				atomicAdd(&dev_fichaInf[1], 1);
-				dev_tabAuxiliar[idx] = 0;
+				dev_tablero[idx] = 0;
 			}
 		}
 		__syncthreads();
 	} while (count[0] != count[1]);
 
 	if (idx == touch) {
-		if (dev_fichaInf[1] == 5) dev_tabAuxiliar[idx] = 8;
-		else if (dev_fichaInf[1] == 6) dev_tabAuxiliar[idx] = 9;
+		if (dev_fichaInf[1] == 5) {
+			dev_tablero[idx] = 8;
+			atomicSub(&dev_fichaInf[1], 1);
+		}
+		else if (dev_fichaInf[1] == 6) {
+			dev_tablero[idx] = 9;
+			atomicSub(&dev_fichaInf[1], 1);
+		}	
 		else if (dev_fichaInf[1] >= 7) {
 			int id = threadIdx.x;
 			curandState localState = globalState[id];
 			float r = (curand_uniform(&localState) * dev_DIF) + 1;
 			globalState[id] = localState;
-			dev_tabAuxiliar[idx] = 10 + r;
+			dev_tablero[idx] = 10 + r;
 
 			atomicSub(&dev_fichaInf[1], 1);
 		}
 	}
-	//if (dev_tabAuxiliar[idx] == -1)
-		//dev_tabAuxiliar[idx] = ;
 }
 
 __global__ void eliminar_bomba(int* dev_tablero, int* dev_coordenadas, int* dev_fichaInf, curandState* globalState) {
@@ -136,23 +130,43 @@ __global__ void eliminar_bomba(int* dev_tablero, int* dev_coordenadas, int* dev_
 	if (dev_fichaInf[0] == 0) {
 		if (threadIdx.y == dev_coordenadas[1]) {
 			dev_tablero[pos] = 0;
+			atomicAdd(&dev_fichaInf[1], 1);
 		}
 	}
 	else {
 		if (threadIdx.x == dev_coordenadas[0]) {
 			dev_tablero[pos] = 0;
+			atomicAdd(&dev_fichaInf[1], 1);
 		}
 	}
 }
 
-__global__ void eliminar_tnt() {
+__global__ void eliminar_tnt(int* dev_tablero, int* dev_coordenadas, int* dev_fichaInf) {
+	int pos = threadIdx.y * blockDim.x + threadIdx.x;
+	int distancia = sqrt((float)pow((double)threadIdx.x - dev_coordenadas[0], 2.0) + pow((double)threadIdx.y - dev_coordenadas[1], 2.0));
 
+	if (distancia <= 4) {
+		dev_tablero[pos] = 0;
+		atomicAdd(&dev_fichaInf[1], 1);
+	}
 }
 
-__global__ void eliminar_rompecabezas() {
+__global__ void eliminar_rompecabezas(int* dev_tablero, int* dev_coordenadas, int* dev_fichaInf) {
+	int pos = threadIdx.y * blockDim.x + threadIdx.x;
+	int touch = dev_coordenadas[1] * blockDim.x + dev_coordenadas[0];
+	int elem = dev_tablero[touch] % 10;
 
+	__syncthreads();
+
+	if (dev_tablero[pos] == elem || pos == touch) {
+		dev_tablero[pos] = 0;
+		atomicAdd(&dev_fichaInf[1], 1);
+	}
 }
 
+void init_tablero() {
+
+}
 void update() {
 
 }
@@ -187,8 +201,8 @@ int main(int argc, const char* argv[]) {
 	cudaFree(0);
 	//Variables 
 	vidas = 5;
-	N = 5;
-	M = 5;
+	N = 10;
+	M = 10;
 	dif = 6;
 	int SIZE = N * M * sizeof(int);
 	int size_coord = 2 * sizeof(int);
@@ -201,20 +215,19 @@ int main(int argc, const char* argv[]) {
 	//Punteros GPU
 	curandState* dev_states;
 	int* dev_tablero;
-	int* dev_resultado;
 	int* dev_coordenadas;
 	int* dev_fichaInf;
 	cudaMemcpyToSymbol(dev_DIF, &dif, sizeof(int));
 	cudaMemcpyToSymbol(dev_N, &N, sizeof(int));
 	cudaMemcpyToSymbol(dev_M, &M, sizeof(int));
 	cudaMalloc((void**)&dev_tablero, SIZE);
-	cudaMalloc((void**)&dev_resultado, SIZE);
 	cudaMalloc((void**)&dev_coordenadas, size_coord);
 	cudaMalloc((void**)&dev_fichaInf, size_coord);
 	cudaMalloc(&dev_states, N * sizeof(curandState));
 
 	//Inicializar tablero
 	//---------------------------------------------------------------------------------------------
+
 	vaciar_tablero(h_tablero);
 	mostrar_tablero(h_tablero);
 	cudaMemcpy(dev_tablero, h_tablero, SIZE, cudaMemcpyHostToDevice);
@@ -235,9 +248,9 @@ int main(int argc, const char* argv[]) {
 	//---------------------------------------------------------------------------------------------
 	printf("\n|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||\n");
 	mostrar_tablero(h_tablero);
+
 	//Bucle principal
 	//---------------------------------------------------------------------------------------------
-	
 	int ficha;
 	while (vidas > 0) {
 		printf("\nIntroduce el numero de columna: ");
@@ -252,19 +265,20 @@ int main(int argc, const char* argv[]) {
 		dim3 hilos(N, M);
 		
 		if (h_tablero[ficha] < 7) {
-			eliminar_fichas <<<bloques, hilos>>>(dev_tablero, dev_resultado, dev_coordenadas, dev_fichaInf, dev_states);
+			eliminar_fichas <<<bloques, hilos>>> (dev_tablero, dev_coordenadas, dev_fichaInf, dev_states);
 		}
-		/*else if (h_tablero[ficha] == 8) {
-			eliminar_bomba<<<bloques, hilos>>>(dev_tablero, dev_coordenadas, dev_fichaInf, dev_states);
+		else if (h_tablero[ficha] == 8) {
+			eliminar_bomba <<<bloques, hilos>>> (dev_tablero, dev_coordenadas, dev_fichaInf, dev_states);
 		}
 		else if (h_tablero[ficha] == 9) {
-
-		}*/
-		cudaMemcpy(dev_tablero, dev_resultado, SIZE, cudaMemcpyDeviceToDevice);
-		cudaMemcpy(h_tablero, dev_resultado, SIZE, cudaMemcpyDeviceToHost);
+			eliminar_tnt <<<bloques, hilos>>> (dev_tablero, dev_coordenadas, dev_fichaInf);
+		}
+		else {
+			eliminar_rompecabezas <<<bloques, hilos>>> (dev_tablero, dev_coordenadas, dev_fichaInf);
+		}
+		cudaMemcpy(h_tablero, dev_tablero, SIZE, cudaMemcpyDeviceToHost);
 		cudaMemcpy(h_fichaInf, dev_fichaInf, size_coord, cudaMemcpyDeviceToHost);
 		mostrar_tablero(h_tablero);
-		printf("/n--%d--/n", h_fichaInf[1]);
 		while (h_fichaInf[1] != 0) {
 			generar_fichas << <blocksInGrid, threadsInBlock >> > (dev_tablero, dev_states, dev_fichaInf);
 
@@ -281,7 +295,6 @@ int main(int argc, const char* argv[]) {
 
 	//Liberar memoria
 	cudaFree(dev_tablero);
-	cudaFree(dev_resultado);
 	cudaFree(dev_coordenadas);
 	cudaFree(dev_fichaInf);
 	cudaFree(dev_states);
