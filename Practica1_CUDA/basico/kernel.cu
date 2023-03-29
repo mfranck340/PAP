@@ -6,34 +6,38 @@
 #include <stdlib.h>
 #include <time.h>
 
-__constant__ int dev_N;
-__constant__ int dev_M;
-__constant__ int dev_DIF;
+__constant__ int dev_N;		//Número de columnas (memoria constante)
+__constant__ int dev_M;		//Número de filas (memoria constante)
+__constant__ int dev_DIF;	//Dificultad (memoria constante)
 
-int vidas = 0;
-int N = 0;
-int M = 0;
-int dif;
-char ejecucion;
+int vidas = 0;				//Número de vidas
+int N = 0;					//Número de columnas
+int M = 0;					//Número de filas
+int dif;					//Dificultad (4 -> Fácil / 6 -> Difícil)
+char ejecucion;				//Tipo de ejecución (a -> Automática / m -> Manual)
 
+//Da a cada columna una semilla para generar números aleatorios
 __global__ void setup_kernel(curandState* state, unsigned long seed) {
 	int id = threadIdx.x;
 	curand_init(seed, id, 0, &state[id]);
 }
 
+//Genera fichas aleatorias en los bloques de aire que hay arriba
 __global__ void generar_fichas(char* dev_tablero, curandState* globalState, int* dev_fichasInf) {
-	int pos = ((threadIdx.y * blockDim.x) + threadIdx.x) * 2;
+	int pos = ((threadIdx.y * blockDim.x) + threadIdx.x) * 2;	//Posición del hilo en el tablero
+
+	//Si tenemos un bloque de aire, entonces generamos una ficha aleatoria en lo alto de la columna
 	if (dev_tablero[pos] == '0') {
 		int idx = threadIdx.x;
-		curandState localState = globalState[idx];
-		float r = (curand_uniform(&localState) * dev_DIF) + 1;
-		globalState[idx] = localState;
-		dev_tablero[pos] = (int)r;
+		curandState localState = globalState[idx];								//Cogemos la semilla calculada anteriormente
+		dev_tablero[pos] = (int) (curand_uniform(&localState) * dev_DIF) + 1;	//Obtenemos el valor aleatorio y actualizamos la semilla
+		globalState[idx] = localState;											//Guardamos la semilla actualizada
 		
-		atomicSub(&dev_fichasInf[1], 1);
+		atomicSub(&dev_fichasInf[1], 1);										//Restamos 1 al número de bloques de aire
 	}
 }
 
+//Baja las fichas cuando se detectan bloques de aire debajo
 __global__ void bajar_fichas(char* dev_tablero) {
 	int pos = (dev_N * dev_M - threadIdx.x) - 1;
 
@@ -198,7 +202,7 @@ int main(int argc, const char* argv[]) {
 	dif = 6;
 	ejecucion = 'm';
 
-	//Declaraci�n de variables
+	//Declaraci�n de variables
 	int SIZE = N * M * 2 * sizeof(char);
 	int size_coord = 2 * sizeof(int);
 	int* h_coordenadas = (int*)malloc(size_coord);
