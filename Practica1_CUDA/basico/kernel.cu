@@ -1,4 +1,4 @@
-#include "cuda_runtime.h"
+﻿#include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 
 #include <curand_kernel.h>
@@ -18,32 +18,40 @@ char ejecucion;				//Tipo de ejecución (a -> Automática / m -> Manual)
 
 //Da a cada columna una semilla para generar números aleatorios
 __global__ void setup_kernel(curandState* state, unsigned long seed) {
-	int id = threadIdx.x;
-	curand_init(seed, id, 0, &state[id]);
+	int col = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int fil = (blockIdx.y * blockDim.y) + threadIdx.y;
+	int id = (fil * dev_N) + col;
+	if (fil == 0)
+		curand_init(seed, id, 0, &state[id]);
+
 }
 
 //Genera fichas aleatorias en los bloques de aire que hay arriba
 __global__ void generar_fichas(char* dev_tablero, curandState* globalState, int* dev_fichasInf) {
-	int pos = ((threadIdx.y * blockDim.x) + threadIdx.x) * 2;	//Posición del hilo en el tablero
+	int col = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int fil = (blockIdx.y * blockDim.y) + threadIdx.y;
+	int pos = ((fil * dev_N) + col) * 2;										//Posición del hilo en el tablero
 
 	//Si tenemos un bloque de aire, entonces generamos una ficha aleatoria en lo alto de la columna
-	if (dev_tablero[pos] == '0') {
+	if (fil == 0 && dev_tablero[pos] == '0') {
 		int idx = threadIdx.x;
 		curandState localState = globalState[idx];								//Cogemos la semilla calculada anteriormente
-		dev_tablero[pos] = (int) (curand_uniform(&localState) * dev_DIF) + 1;	//Obtenemos el valor aleatorio y actualizamos la semilla
+		dev_tablero[pos] = (int)(curand_uniform(&localState) * dev_DIF) + 1;	//Obtenemos el valor aleatorio y actualizamos la semilla
 		globalState[idx] = localState;											//Guardamos la semilla actualizada
-		
+
 		atomicSub(&dev_fichasInf[1], 1);										//Restamos 1 al número de bloques de aire
 	}
 }
 
 //Baja las fichas cuando se detectan bloques de aire debajo
 __global__ void bajar_fichas(char* dev_tablero) {
-	int pos = (dev_N * dev_M - threadIdx.x) - 1;
+	int col = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int fil = (blockIdx.y * blockDim.y) + threadIdx.y;
+	int pos = ((fil * dev_N) + col) * 2;
 
-	for (int i = pos; i >= dev_N; i -= dev_N) {
-		if (dev_tablero[i * 2] == '0') {
-			if (dev_tablero[(i - dev_N) * 2] != '0') {
+	if (fil == dev_M - 1) {
+		for (int i = pos; i >= dev_N; i -= dev_N) {
+			if (dev_tablero[i * 2] == '0' && dev_tablero[(i - dev_N) * 2] != '0') {
 				dev_tablero[i * 2] = dev_tablero[(i - dev_N) * 2];
 				dev_tablero[i * 2 + 1] = dev_tablero[(i - dev_N) * 2 + 1];
 				dev_tablero[(i - dev_N) * 2] = '0';
@@ -51,9 +59,10 @@ __global__ void bajar_fichas(char* dev_tablero) {
 			}
 		}
 	}
+
 }
 
-__global__ void eliminar_fichas(char* dev_tablero, int* dev_coordenadas,  int* dev_fichaInf, curandState* globalState) {
+__global__ void eliminar_fichas(char* dev_tablero, int* dev_coordenadas, int* dev_fichaInf, curandState* globalState) {
 	int col = blockIdx.x * blockDim.x + threadIdx.x;
 	int fil = blockIdx.y * blockDim.y + threadIdx.y;
 	int idx = (fil * blockDim.x + col) * 2;
@@ -66,7 +75,7 @@ __global__ void eliminar_fichas(char* dev_tablero, int* dev_coordenadas,  int* d
 	else if (dev_tablero[idx] == dev_tablero[touch]) {
 		atomicAdd(&dev_fichaInf[0], 1);
 	}
-	
+
 	__syncthreads();
 	int total = dev_fichaInf[0];
 	dev_fichaInf[1] = dev_fichaInf[0];
@@ -94,7 +103,7 @@ __global__ void eliminar_fichas(char* dev_tablero, int* dev_coordenadas,  int* d
 		}
 		__syncthreads();
 	} while (dev_fichaInf[0] != dev_fichaInf[1]);
-	
+
 	if (idx == touch) {
 		dev_fichaInf[1] = total - dev_fichaInf[1] + 1;
 		if (dev_fichaInf[1] == 5) {
@@ -104,7 +113,7 @@ __global__ void eliminar_fichas(char* dev_tablero, int* dev_coordenadas,  int* d
 		else if (dev_fichaInf[1] == 6) {
 			dev_tablero[idx] = 'T';
 			dev_fichaInf[1] -= 1;
-		}	
+		}
 		else if (dev_fichaInf[1] >= 7) {
 			dev_tablero[idx] = 'R';
 			int id = threadIdx.x;
@@ -178,10 +187,10 @@ void mostrar_tablero(char* tablero) {
 			if ((int)tablero[((i * N) + j) * 2] > 0 && (int)tablero[((i * N) + j) * 2] <= 6)
 				printf("%d | ", tablero[((i * N) + j) * 2]);
 
-			else if (tablero[((i * N) + j) * 2] == 'R') 
+			else if (tablero[((i * N) + j) * 2] == 'R')
 				printf("%c%d | ", tablero[((i * N) + j) * 2], tablero[((i * N) + j) * 2 + 1]);
 
-			else 
+			else
 				printf("%c | ", tablero[((i * N) + j) * 2]);
 		}
 		printf("\n");
@@ -234,12 +243,12 @@ int main(int argc, const char* argv[]) {
 	cudaMemcpy(dev_tablero, h_tablero, SIZE, cudaMemcpyHostToDevice);
 	cudaMemcpy(dev_fichaInf, h_fichaInf, size_coord, cudaMemcpyHostToDevice);
 	dim3 blocksInGrid(1);
-	dim3 threadsInBlock(N);
-	setup_kernel <<<blocksInGrid, threadsInBlock>>> (dev_states, time(0));
+	dim3 threadsInBlock(N, M);
+	setup_kernel << <blocksInGrid, threadsInBlock >> > (dev_states, time(0));
 
 	while (h_fichaInf[1] != 0) {
-		bajar_fichas <<<blocksInGrid, threadsInBlock>>> (dev_tablero);
-		generar_fichas <<<blocksInGrid, threadsInBlock>>> (dev_tablero, dev_states, dev_fichaInf);
+		bajar_fichas << <blocksInGrid, threadsInBlock >> > (dev_tablero);
+		generar_fichas << <blocksInGrid, threadsInBlock >> > (dev_tablero, dev_states, dev_fichaInf);
 
 		cudaMemcpy(h_tablero, dev_tablero, SIZE, cudaMemcpyDeviceToHost);
 		mostrar_tablero(h_tablero);
@@ -250,8 +259,6 @@ int main(int argc, const char* argv[]) {
 	//---------------------------------------------------------------------------------------------
 	int ficha;
 	srand(time(NULL));
-	dim3 bloques(1);
-	dim3 hilos(N, M);
 
 	printf("\nComienza el juego :)\n");
 	while (vidas > 0) {
@@ -262,7 +269,7 @@ int main(int argc, const char* argv[]) {
 				printf("Introduce el numero de columna (%d - %d): ", 0, N - 1);
 				scanf("%d", &h_coordenadas[0]);
 			} while (h_coordenadas[0] < 0 || h_coordenadas[0] >= N);
-			
+
 			do {
 				printf("Introduce el numero de fila (%d - %d): ", 0, M - 1);
 				scanf("%d", &h_coordenadas[1]);
@@ -276,24 +283,24 @@ int main(int argc, const char* argv[]) {
 		printf("Coordenadas: (%d, %d)\n", h_coordenadas[0], h_coordenadas[1]);
 
 		ficha = (h_coordenadas[1] * N + h_coordenadas[0]) * 2;
-		
+
 		cudaMemcpy(dev_coordenadas, h_coordenadas, size_coord, cudaMemcpyHostToDevice);
 
 		if ((int)h_tablero[ficha] <= 6) {
 			printf("\nEn eliminar\n");
-			eliminar_fichas <<<bloques, hilos>>> (dev_tablero, dev_coordenadas, dev_fichaInf, dev_states);
+			eliminar_fichas << <blocksInGrid, threadsInBlock >> > (dev_tablero, dev_coordenadas, dev_fichaInf, dev_states);
 		}
 		else if (h_tablero[ficha] == 'B') {
 			int aleatorio = rand() % 2;
-			eliminar_bomba <<<bloques, hilos>>> (dev_tablero, dev_coordenadas, dev_fichaInf, aleatorio);
+			eliminar_bomba << <blocksInGrid, threadsInBlock >> > (dev_tablero, dev_coordenadas, dev_fichaInf, aleatorio);
 		}
 		else if (h_tablero[ficha] == 'T') {
 			printf("\nEn tnt\n");
-			eliminar_tnt <<<bloques, hilos>>> (dev_tablero, dev_coordenadas, dev_fichaInf);
+			eliminar_tnt << <blocksInGrid, threadsInBlock >> > (dev_tablero, dev_coordenadas, dev_fichaInf);
 		}
 		else {
 			printf("\nEn rompe\n");
-			eliminar_rompecabezas <<<bloques, hilos>>> (dev_tablero, dev_coordenadas, dev_fichaInf);
+			eliminar_rompecabezas << <blocksInGrid, threadsInBlock >> > (dev_tablero, dev_coordenadas, dev_fichaInf);
 		}
 		cudaMemcpy(h_tablero, dev_tablero, SIZE, cudaMemcpyDeviceToHost);
 		cudaMemcpy(h_fichaInf, dev_fichaInf, size_coord, cudaMemcpyDeviceToHost);
@@ -302,18 +309,18 @@ int main(int argc, const char* argv[]) {
 		if (h_fichaInf[1] == 1) vidas--;
 
 		while (h_fichaInf[1] != 0) {
-			bajar_fichas <<<blocksInGrid, threadsInBlock>>> (dev_tablero);
-			generar_fichas <<<blocksInGrid, threadsInBlock>>> (dev_tablero, dev_states, dev_fichaInf);
+			bajar_fichas << <blocksInGrid, threadsInBlock >> > (dev_tablero);
+			generar_fichas << <blocksInGrid, threadsInBlock >> > (dev_tablero, dev_states, dev_fichaInf);
 
 			cudaMemcpy(h_tablero, dev_tablero, SIZE, cudaMemcpyDeviceToHost);
 			mostrar_tablero(h_tablero);
 			cudaMemcpy(h_fichaInf, dev_fichaInf, size_coord, cudaMemcpyDeviceToHost);
 		}
-		
+
 	}
 	printf("\nVidas: %d\n", vidas);
 	printf("\nGAME OVER :(\n");
-	
+
 	//Liberar memoria
 	//---------------------------------------------------------------------------------------------
 	cudaFree(dev_tablero);
