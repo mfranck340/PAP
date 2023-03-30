@@ -217,13 +217,13 @@ int main(int argc, const char* argv[]) {
 
 	//Datos usuario
 	vidas = 1000;
-	N = 9;				//columnas
-	M = 3;				//filas
-	dif = 4;
-	ejecucion = 'm';
+	//N = 9;				//columnas
+	//M = 3;				//filas
+	//dif = 4;
+	//ejecucion = 'm';
 
 	//Pedir datos al usuario
-	/*do {
+	do {
 		printf("Introduce el numero de filas del tablero: ");
 		scanf("%d", &M);
 	} while ((int)M < 1);
@@ -244,7 +244,7 @@ int main(int argc, const char* argv[]) {
 	} while (dif != 1 && dif != 2);
 
 	if (dif == 1) dif = 4;
-	else dif = 6;*/
+	else dif = 6;
 
 	//Declaración de variables
 	int SIZE = N * M * 2 * sizeof(char);
@@ -277,8 +277,8 @@ int main(int argc, const char* argv[]) {
 
 	cudaMemcpy(dev_tablero, h_tablero, SIZE, cudaMemcpyHostToDevice);			//Transfiere el contenido de h_tablero a dev_tablero
 	cudaMemcpy(dev_fichaInf, h_fichaInf, size_coord, cudaMemcpyHostToDevice);	//Transfiere el contenido de h_fichaInf a dev_fichaInf
-	dim3 blocksInGrid(1);														//1 bloque
-	dim3 threadsInBlock(N, M);													//N * M hilos
+	dim3 blocksInGrid(1);														//1 bloque/grid
+	dim3 threadsInBlock(N, M);													//N * M hilos/blq
 	setup_kernel << <blocksInGrid, threadsInBlock >> > (dev_states, time(0));	//Generamos las semillas
 
 	while (h_fichaInf[1] != 0) {												//Se llama iterativamente a bajar_fichas y generar_fichas hasta que no queden bloques de aire
