@@ -36,33 +36,31 @@ __global__ void generar_fichas(char* dev_tablero, curandState* globalState, int*
 
 	if (dev_N > col && dev_M > fil) {
 		if (fil == 0 && dev_tablero[pos] == '0') {
-			int idx = (fil * dev_N) + col;
-			curandState localState = globalState[idx];
-			float r = (curand_uniform(&localState) * dev_DIF) + 1;
-			globalState[idx] = localState;
-			dev_tablero[pos] = (int)r;
-			atomicSub(&dev_fichasInf[1], 1);
+			int idx = threadIdx.x;
+			curandState localState = globalState[idx];								//Cogemos la semilla calculada anteriormente
+			dev_tablero[pos] = (int)(curand_uniform(&localState) * dev_DIF) + 1;	//Obtenemos el valor aleatorio y actualizamos la semilla
+			globalState[idx] = localState;											//Guardamos la semilla actualizada
+
+			atomicSub(&dev_fichasInf[1], 1);										//Restamos 1 al número de bloques de aire
 		}
 	}
 
 }
 
 __global__ void bajar_fichas(char* dev_tablero) {
-	int col = (blockIdx.x * blockDim.x) + threadIdx.x;
-	int fil = (blockIdx.y * blockDim.y) + threadIdx.y;
-	int pos = ((fil * dev_N) + col) * 2;
+	int col = (blockIdx.x * blockDim.x) + threadIdx.x;							//Columna del hilo en el tablero
+	int fil = (blockIdx.y * blockDim.y) + threadIdx.y;							//Fila del hilo en el tablero
+	int pos = ((fil * dev_N) + col) * 2;										//Posición del hilo en el tablero
 
-	if (dev_N > col && dev_M > fil) {
-		if (fil == dev_M - 1) {
-			for (int i = pos; i >= dev_N; i -= dev_N) {
-				if (dev_tablero[i * 2] == '0') {
-					if (dev_tablero[(i - dev_N) * 2] != '0') {
-						dev_tablero[i * 2] = dev_tablero[(i - dev_N) * 2];
-						dev_tablero[i * 2 + 1] = dev_tablero[(i - dev_N) * 2 + 1];
-						dev_tablero[(i - dev_N) * 2] = '0';
-						dev_tablero[(i - dev_N) * 2 + 1] = '0';
-					}
-				}
+	//Si la fila se corresponde con la última del tablero, nos recorremos la columna hacia arriba hasta encontrar bloques de aire
+	if (fil == dev_M - 1) {
+		for (int i = pos; i >= dev_N * 2; i -= dev_N * 2) {
+			//Si tenemos un bloque de aire y el de arriba no lo es, tenemos que hacer que caiga la ficha
+			if (dev_tablero[i] == '0' && dev_tablero[(i - dev_N * 2)] != '0') {
+				dev_tablero[i] = dev_tablero[(i - dev_N * 2)];				//Bajamos la ficha
+				dev_tablero[i + 1] = dev_tablero[(i - dev_N * 2) + 1];
+				dev_tablero[(i - dev_N * 2)] = '0';								//Ponemos el bloque de aire en la posición de encima
+				dev_tablero[(i - dev_N * 2) + 1] = '0';
 			}
 		}
 	}
@@ -240,7 +238,7 @@ int main(int argc, const char* argv[]) {
 	int BLOCK_SIZE = sqrt(deviceProp.maxThreadsPerBlock);
 	printf("\nBlock size: %d\n", BLOCK_SIZE);
 
-	//DeclaraciÃ³n de variables
+	//Declaración de variables
 	int SIZE = N * M * 2 * sizeof(char);
 	int size_coord = 2 * sizeof(int);
 	int size_ficha = 3 * sizeof(int);

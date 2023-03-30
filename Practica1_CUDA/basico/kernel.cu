@@ -50,13 +50,13 @@ __global__ void bajar_fichas(char* dev_tablero) {
 
 	//Si la fila se corresponde con la última del tablero, nos recorremos la columna hacia arriba hasta encontrar bloques de aire
 	if (fil == dev_M - 1) {
-		for (int i = pos; i >= dev_N; i -= dev_N) {
+		for (int i = pos; i >= dev_N * 2; i -= dev_N * 2) {
 			//Si tenemos un bloque de aire y el de arriba no lo es, tenemos que hacer que caiga la ficha
-			if (dev_tablero[i * 2] == '0' && dev_tablero[(i - dev_N) * 2] != '0') {
-				dev_tablero[i * 2] = dev_tablero[(i - dev_N) * 2];				//Bajamos la ficha
-				dev_tablero[i * 2 + 1] = dev_tablero[(i - dev_N) * 2 + 1];
-				dev_tablero[(i - dev_N) * 2] = '0';								//Ponemos el bloque de aire en la posición de encima
-				dev_tablero[(i - dev_N) * 2 + 1] = '0';
+			if (dev_tablero[i] == '0' && dev_tablero[(i - dev_N * 2)] != '0') {
+				dev_tablero[i] = dev_tablero[(i - dev_N * 2)];				//Bajamos la ficha
+				dev_tablero[i + 1] = dev_tablero[(i - dev_N * 2) + 1];
+				dev_tablero[(i - dev_N * 2)] = '0';								//Ponemos el bloque de aire en la posición de encima
+				dev_tablero[(i - dev_N * 2) + 1] = '0';
 			}
 		}
 	}
@@ -120,7 +120,7 @@ __global__ void eliminar_fichas(char* dev_tablero, int* dev_coordenadas, int* de
 			dev_tablero[idx] = 'R';
 			int id = threadIdx.x;
 			curandState localState = globalState[id];							//Seleccionamos aleatoriamente el tipo de rompecabezas
-			dev_tablero[idx + 1] = (int) (curand_uniform(&localState) * dev_DIF) + 1;
+			dev_tablero[idx + 1] = (int)(curand_uniform(&localState) * dev_DIF) + 1;
 			globalState[id] = localState;
 			dev_fichaInf[1] -= 1;												//Restamos 1 a los bloques que se han borrado (creado aire)
 		}
@@ -213,10 +213,33 @@ int main(int argc, const char* argv[]) {
 
 	//Datos usuario
 	vidas = 100;
-	N = 11;				//columnas
-	M = 6;				//filas
-	dif = 6;
-	ejecucion = 'm';
+	//N = 8;				//columnas
+	//M = 5;				//filas
+	//dif = 6;
+	//ejecucion = 'm';
+	do {
+		printf("Introduce el numero de filas del tablero: ");
+		scanf("%d", &M);
+	} while ((int)M < 1);
+	do {
+		printf("Introduce el numero de columnas del tablero: ");
+		scanf("%d", &N);
+	} while ((int)N < 1);
+	do {
+		printf("Introduce el tipo de ejecucion (m --> Manual / a --> Automatica): ");
+		fflush(stdout);
+		scanf("%c", &ejecucion);
+		printf("aa%c", ejecucion);
+	} while (ejecucion != 'm' && ejecucion != 'a');
+	do {
+		printf("Introduce la dificultad del juego (1 --> Facil / 2 --> Dificil): ");
+		scanf("%d", &dif);
+	} while (dif != 1 && dif != 2);
+
+	if (dif == 1) 
+		dif = 4;
+	else 
+		dif = 6;
 
 	//Declaración de variables
 	int SIZE = N * M * 2 * sizeof(char);

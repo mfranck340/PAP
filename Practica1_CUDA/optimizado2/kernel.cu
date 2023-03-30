@@ -18,10 +18,10 @@ int N = 0;
 int M = 0;
 int dif;
 char ejecucion;
-const int BLQ_X = 2;
-const int BLQ_Y = 2;
-const int TESELA_X = 5;
-const int TESELA_Y = 2;
+const int BLQ_X = 4;
+const int BLQ_Y = 3;
+const int TESELA_X = 6;
+const int TESELA_Y = 3;
 
 __global__ void setup_kernel(curandState* state, unsigned long seed) {
 	int col = (blockIdx.x * blockDim.x) + threadIdx.x;
@@ -53,6 +53,7 @@ __global__ void generar_fichas(char* dev_tablero, curandState* globalState, int*
 
 	if (dev_N > col && dev_M > fil) {
 		if (fil == 0 && tab_shared[pos_shared] == '0') {
+
 			int idx = threadIdx.x;
 			curandState localState = globalState[idx];								//Cogemos la semilla calculada anteriormente
 			tab_shared[pos_shared] = (int)(curand_uniform(&localState) * dev_DIF) + 1;	//Obtenemos el valor aleatorio y actualizamos la semilla
@@ -73,7 +74,7 @@ __global__ void bajar_fichas(char* dev_tablero) {
 	int pos = ((fil * dev_N) + col) * 2;										//Posición del hilo en el tablero
 
 	//Si la fila se corresponde con la última del tablero, nos recorremos la columna hacia arriba hasta encontrar bloques de aire
-	if (dev_N > col && dev_M > fil && fil == dev_M - 1) {
+	if (fil == dev_M - 1) {
 		for (int i = pos; i >= dev_N * 2; i -= dev_N * 2) {
 			//Si tenemos un bloque de aire y el de arriba no lo es, tenemos que hacer que caiga la ficha
 			if (dev_tablero[i] == '0' && dev_tablero[(i - dev_N * 2)] != '0') {
@@ -84,13 +85,6 @@ __global__ void bajar_fichas(char* dev_tablero) {
 			}
 		}
 	}
-
-	//for (int i = dev_M - 1; i == 0; i--) {
-
-
-		//__syncthreads();
-	//}
-
 }
 
 __global__ void eliminar_fichas(char* dev_tablero, int* dev_coordenadas, int* dev_fichaInf) {
@@ -376,8 +370,8 @@ int main(int argc, const char* argv[]) {
 
 	//Datos usuario
 	vidas = 100;
-	N = 9;					//columnas
-	M = 3;					//filas
+	N = 20;					//columnas
+	M = 7;					//filas
 	dif = 4;
 	ejecucion = 'm';
 
@@ -427,9 +421,8 @@ int main(int argc, const char* argv[]) {
 	setup_kernel << <blocksInGrid, threadsInBlock >> > (dev_states, time(0));
 
 	while (h_fichaInf[1] != 0) {
+		printf("\nfichas: %d\n", h_fichaInf[1]);
 		bajar_fichas << <blocksInGrid, threadsInBlock >> > (dev_tablero);
-		cudaMemcpy(h_tablero, dev_tablero, SIZE, cudaMemcpyDeviceToHost);
-		mostrar_tablero(h_tablero);
 		generar_fichas << <blocksInGrid, threadsInBlock >> > (dev_tablero, dev_states, dev_fichaInf);
 		cudaMemcpy(h_tablero, dev_tablero, SIZE, cudaMemcpyDeviceToHost);
 		mostrar_tablero(h_tablero);
