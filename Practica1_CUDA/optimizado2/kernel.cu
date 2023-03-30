@@ -18,10 +18,10 @@ int N = 0;
 int M = 0;
 int dif;
 char ejecucion;
-const int BLQ_X = 4;
-const int BLQ_Y = 3;
-const int TESELA_X = 6;
-const int TESELA_Y = 3;
+const int BLQ_X = 2;
+const int BLQ_Y = 2;
+const int TESELA_X = 5;
+const int TESELA_Y = 2;
 
 __global__ void setup_kernel(curandState* state, unsigned long seed) {
 	int col = (blockIdx.x * blockDim.x) + threadIdx.x;
@@ -74,14 +74,16 @@ __global__ void bajar_fichas(char* dev_tablero) {
 	int pos = ((fil * dev_N) + col) * 2;										//Posición del hilo en el tablero
 
 	//Si la fila se corresponde con la última del tablero, nos recorremos la columna hacia arriba hasta encontrar bloques de aire
-	if (fil == dev_M - 1) {
-		for (int i = pos; i >= dev_N * 2; i -= dev_N * 2) {
-			//Si tenemos un bloque de aire y el de arriba no lo es, tenemos que hacer que caiga la ficha
-			if (dev_tablero[i] == '0' && dev_tablero[(i - dev_N * 2)] != '0') {
-				dev_tablero[i] = dev_tablero[(i - dev_N * 2)];				//Bajamos la ficha
-				dev_tablero[i + 1] = dev_tablero[(i - dev_N * 2) + 1];
-				dev_tablero[(i - dev_N * 2)] = '0';								//Ponemos el bloque de aire en la posición de encima
-				dev_tablero[(i - dev_N * 2) + 1] = '0';
+	if (dev_N > col && dev_M > fil) {
+		if (fil == dev_M - 1) {
+			for (int i = pos; i >= dev_N * 2; i -= dev_N * 2) {
+				//Si tenemos un bloque de aire y el de arriba no lo es, tenemos que hacer que caiga la ficha
+				if (dev_tablero[i] == '0' && dev_tablero[(i - dev_N * 2)] != '0') {
+					dev_tablero[i] = dev_tablero[(i - dev_N * 2)];				//Bajamos la ficha
+					dev_tablero[i + 1] = dev_tablero[(i - dev_N * 2) + 1];
+					dev_tablero[(i - dev_N * 2)] = '0';								//Ponemos el bloque de aire en la posición de encima
+					dev_tablero[(i - dev_N * 2) + 1] = '0';
+				}
 			}
 		}
 	}
@@ -188,7 +190,11 @@ __global__ void colocar_fichaEX(char* dev_tablero, int* dev_coordenadas, int* de
 
 	if (dev_N > col && dev_M > fil) {
 		if (idx == touch) {
-			if (dev_fichaInf[1] == 0) {
+			if (dev_fichaInf[1] == 1) {
+				tab_shared[pos_shared] = dev_fichaInf[2];
+				dev_fichaInf[1] -= 1;
+			}
+			else if (dev_fichaInf[1] == 0) {
 				dev_fichaInf[2] = tab_shared[pos_shared];
 				tab_shared[pos_shared] = '0';
 				dev_fichaInf[1] += 1;
@@ -370,10 +376,34 @@ int main(int argc, const char* argv[]) {
 
 	//Datos usuario
 	vidas = 100;
-	N = 20;					//columnas
-	M = 7;					//filas
-	dif = 4;
-	ejecucion = 'm';
+	//N = 9;					//columnas
+	//M = 3;					//filas
+	//dif = 4;
+	//ejecucion = 'a';
+
+	//Pedir datos al usuario
+	do {
+		printf("Introduce el numero de filas del tablero: ");
+		scanf("%d", &M);
+	} while ((int)M < 1);
+
+	do {
+		printf("Introduce el numero de columnas del tablero: ");
+		scanf("%d", &N);
+	} while ((int)N < 1);
+
+	do {
+		printf("Introduce el tipo de ejecucion (m --> Manual / a --> Automatica): ");
+		scanf("%c", &ejecucion);
+	} while (ejecucion != 'm' && ejecucion != 'a');
+
+	do {
+		printf("Introduce la dificultad del juego (1 --> Facil / 2 --> Dificil): ");
+		scanf("%d", &dif);
+	} while (dif != 1 && dif != 2);
+
+	if (dif == 1) dif = 4;
+	else dif = 6;
 
 	//Optimizar dimensiones
 	cudaDeviceProp deviceProp;
@@ -421,7 +451,6 @@ int main(int argc, const char* argv[]) {
 	setup_kernel << <blocksInGrid, threadsInBlock >> > (dev_states, time(0));
 
 	while (h_fichaInf[1] != 0) {
-		printf("\nfichas: %d\n", h_fichaInf[1]);
 		bajar_fichas << <blocksInGrid, threadsInBlock >> > (dev_tablero);
 		generar_fichas << <blocksInGrid, threadsInBlock >> > (dev_tablero, dev_states, dev_fichaInf);
 		cudaMemcpy(h_tablero, dev_tablero, SIZE, cudaMemcpyDeviceToHost);
@@ -488,9 +517,9 @@ int main(int argc, const char* argv[]) {
 		mostrar_tablero(h_tablero);
 
 		printf("\nEliminadas: %d\n", h_fichaInf[1]);
-		if (h_fichaInf[1] == 1) vidas--;
-		printf("Nos atascamos\n");
-		while (h_fichaInf[1] != 0) {
+		if (h_fichaInf[1] == 0) vidas--;
+		
+		while (h_fichaInf[1] > 0) {
 			bajar_fichas << <blocksInGrid, threadsInBlock >> > (dev_tablero);
 			generar_fichas << <blocksInGrid, threadsInBlock >> > (dev_tablero, dev_states, dev_fichaInf);
 			cudaMemcpy(h_tablero, dev_tablero, SIZE, cudaMemcpyDeviceToHost);
@@ -498,6 +527,8 @@ int main(int argc, const char* argv[]) {
 			cudaMemcpy(h_fichaInf, dev_fichaInf, size_ficha, cudaMemcpyDeviceToHost);
 		}
 
+		h_fichaInf[0] = 0;
+		cudaMemcpy(dev_fichaInf, h_fichaInf, size_ficha, cudaMemcpyHostToDevice);
 	}
 	printf("\nVidas: %d\n", vidas);
 	printf("\nGAME OVER :(\n");

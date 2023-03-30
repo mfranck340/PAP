@@ -108,7 +108,11 @@ __global__ void eliminar_fichas(char* dev_tablero, int* dev_coordenadas, int* de
 
 	if (idx == touch) {															//Si el bloque coincide con el que ha tocado el usuario, comprobamos el número de fichas que se eliminan para colocar los bloques especiales
 		dev_fichaInf[1] = total - dev_fichaInf[1] + 1;							//Número de fichas eliminadas
-		if (dev_fichaInf[1] == 5) {												//Si se han eliminado 5, colocamos una bomba (B)
+		if (dev_fichaInf[1] == 1) {
+			dev_tablero[idx] = elem;
+			dev_fichaInf[1] -= 1;
+		}
+		 else if (dev_fichaInf[1] == 5) {												//Si se han eliminado 5, colocamos una bomba (B)
 			dev_tablero[idx] = 'B';
 			dev_fichaInf[1] -= 1;												//Restamos 1 a los bloques que se han borrado (creado aire)
 		}
@@ -212,34 +216,35 @@ int main(int argc, const char* argv[]) {
 	cudaFree(0);
 
 	//Datos usuario
-	vidas = 100;
-	//N = 8;				//columnas
-	//M = 5;				//filas
-	//dif = 6;
-	//ejecucion = 'm';
-	do {
+	vidas = 1000;
+	N = 9;				//columnas
+	M = 3;				//filas
+	dif = 4;
+	ejecucion = 'm';
+
+	//Pedir datos al usuario
+	/*do {
 		printf("Introduce el numero de filas del tablero: ");
 		scanf("%d", &M);
 	} while ((int)M < 1);
+
 	do {
 		printf("Introduce el numero de columnas del tablero: ");
 		scanf("%d", &N);
 	} while ((int)N < 1);
+
 	do {
 		printf("Introduce el tipo de ejecucion (m --> Manual / a --> Automatica): ");
-		fflush(stdout);
 		scanf("%c", &ejecucion);
-		printf("aa%c", ejecucion);
 	} while (ejecucion != 'm' && ejecucion != 'a');
+
 	do {
 		printf("Introduce la dificultad del juego (1 --> Facil / 2 --> Dificil): ");
 		scanf("%d", &dif);
 	} while (dif != 1 && dif != 2);
 
-	if (dif == 1) 
-		dif = 4;
-	else 
-		dif = 6;
+	if (dif == 1) dif = 4;
+	else dif = 6;*/
 
 	//Declaración de variables
 	int SIZE = N * M * 2 * sizeof(char);
@@ -335,7 +340,7 @@ int main(int argc, const char* argv[]) {
 		cudaMemcpy(h_fichaInf, dev_fichaInf, size_coord, cudaMemcpyDeviceToHost);
 		mostrar_tablero(h_tablero);												//Mostramos el tablero
 
-		if (h_fichaInf[1] == 1) vidas--;										//Restamos una vida si se ha eliminado sólamente un bloque
+		if (h_fichaInf[1] == 0) vidas--;										//Restamos una vida si se ha eliminado sólamente un bloque
 
 		while (h_fichaInf[1] != 0) {											//Se llama iterativamente a bajar_fichas y generar_fichas hasta que no queden bloques de aire
 			bajar_fichas << <blocksInGrid, threadsInBlock >> > (dev_tablero);

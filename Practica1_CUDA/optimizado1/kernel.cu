@@ -53,14 +53,16 @@ __global__ void bajar_fichas(char* dev_tablero) {
 	int pos = ((fil * dev_N) + col) * 2;										//Posición del hilo en el tablero
 
 	//Si la fila se corresponde con la última del tablero, nos recorremos la columna hacia arriba hasta encontrar bloques de aire
-	if (fil == dev_M - 1) {
-		for (int i = pos; i >= dev_N * 2; i -= dev_N * 2) {
-			//Si tenemos un bloque de aire y el de arriba no lo es, tenemos que hacer que caiga la ficha
-			if (dev_tablero[i] == '0' && dev_tablero[(i - dev_N * 2)] != '0') {
-				dev_tablero[i] = dev_tablero[(i - dev_N * 2)];				//Bajamos la ficha
-				dev_tablero[i + 1] = dev_tablero[(i - dev_N * 2) + 1];
-				dev_tablero[(i - dev_N * 2)] = '0';								//Ponemos el bloque de aire en la posición de encima
-				dev_tablero[(i - dev_N * 2) + 1] = '0';
+	if (dev_N > col && dev_M > fil) {
+		if (fil == dev_M - 1) {
+			for (int i = pos; i >= dev_N * 2; i -= dev_N * 2) {
+				//Si tenemos un bloque de aire y el de arriba no lo es, tenemos que hacer que caiga la ficha
+				if (dev_tablero[i] == '0' && dev_tablero[(i - dev_N * 2)] != '0') {
+					dev_tablero[i] = dev_tablero[(i - dev_N * 2)];				//Bajamos la ficha
+					dev_tablero[i + 1] = dev_tablero[(i - dev_N * 2) + 1];
+					dev_tablero[(i - dev_N * 2)] = '0';								//Ponemos el bloque de aire en la posición de encima
+					dev_tablero[(i - dev_N * 2) + 1] = '0';
+				}
 			}
 		}
 	}
@@ -106,7 +108,11 @@ __global__ void colocar_fichaEX(char* dev_tablero, int* dev_coordenadas, int* de
 
 	if (dev_N > col && dev_M > fil) {
 		if (idx == touch) {
-			if (dev_fichaInf[1] == 0) {
+			if (dev_fichaInf[1] == 1) {
+				dev_tablero[idx] = dev_fichaInf[2];
+				dev_fichaInf[1] -= 1;
+			}
+			else if (dev_fichaInf[1] == 0) {
 				dev_fichaInf[2] = dev_tablero[idx];
 				dev_tablero[idx] = '0';
 				dev_fichaInf[1] += 1;
@@ -225,11 +231,37 @@ int main(int argc, const char* argv[]) {
 	cudaFree(0);
 
 	//Datos usuario
-	vidas = 100;
-	N = 9;					//columnas
-	M = 3;					//filas
-	dif = 4;
-	ejecucion = 'm';
+	vidas = 200;
+	//N = 9;					//columnas
+	//M = 3;					//filas
+	//dif = 4;
+	//ejecucion = 'a';
+
+	//Pedir datos al usuario
+	do {
+		printf("Introduce el numero de filas del tablero: ");
+		scanf("%d", &M);
+	} while ((int)M < 1);
+
+	do {
+		printf("Introduce el numero de columnas del tablero: ");
+		scanf("%d", &N);
+	} while ((int)N < 1);
+
+	do {
+		printf("Introduce el tipo de ejecucion (m --> Manual / a --> Automatica): ");
+		fflush(stdout);
+		scanf("%c", &ejecucion);
+		printf("aa%c", ejecucion);
+	} while (ejecucion != 'm' && ejecucion != 'a');
+
+	do {
+		printf("Introduce la dificultad del juego (1 --> Facil / 2 --> Dificil): ");
+		scanf("%d", &dif);
+	} while (dif != 1 && dif != 2);
+
+	if (dif == 1) dif = 4;
+	else dif = 6;
 
 	//Optimizar dimensiones
 	cudaDeviceProp deviceProp;
@@ -337,22 +369,24 @@ int main(int argc, const char* argv[]) {
 		else {
 			eliminar_rompecabezas << <blocksInGrid, threadsInBlock >> > (dev_tablero, dev_coordenadas, dev_fichaInf);
 		}
+		printf("Talbero despues de eliminar: \n");
 		cudaMemcpy(h_tablero, dev_tablero, SIZE, cudaMemcpyDeviceToHost);
 		cudaMemcpy(h_fichaInf, dev_fichaInf, size_ficha, cudaMemcpyDeviceToHost);
 		mostrar_tablero(h_tablero);
 
 		printf("\nEliminadas: %d\n", h_fichaInf[1]);
-		if (h_fichaInf[1] == 1) vidas--;
+		if (h_fichaInf[1] == 0) vidas--;
 
 		while (h_fichaInf[1] != 0) {
 			bajar_fichas << <blocksInGrid, threadsInBlock >> > (dev_tablero);
 			generar_fichas << <blocksInGrid, threadsInBlock >> > (dev_tablero, dev_states, dev_fichaInf);
-
 			cudaMemcpy(h_tablero, dev_tablero, SIZE, cudaMemcpyDeviceToHost);
 			mostrar_tablero(h_tablero);
 			cudaMemcpy(h_fichaInf, dev_fichaInf, size_ficha, cudaMemcpyDeviceToHost);
 		}
 
+		h_fichaInf[0] = 0;
+		cudaMemcpy(dev_fichaInf, h_fichaInf, size_ficha, cudaMemcpyHostToDevice);
 	}
 	printf("\nVidas: %d\n", vidas);
 	printf("\nGAME OVER :(\n");
