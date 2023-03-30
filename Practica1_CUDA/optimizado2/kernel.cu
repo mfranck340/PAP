@@ -68,24 +68,29 @@ __global__ void generar_fichas(char* dev_tablero, curandState* globalState, int*
 }
 
 __global__ void bajar_fichas(char* dev_tablero) {
-	int col = (blockIdx.x * blockDim.x) + threadIdx.x;
-	int fil = (blockIdx.y * blockDim.y) + threadIdx.y;
-	int pos = ((fil * dev_N) + col) * 2;
+	int col = (blockIdx.x * blockDim.x) + threadIdx.x;							//Columna del hilo en el tablero
+	int fil = (blockIdx.y * blockDim.y) + threadIdx.y;							//Fila del hilo en el tablero
+	int pos = ((fil * dev_N) + col) * 2;										//Posición del hilo en el tablero
 
-	if (dev_N > col && dev_M > fil) {
-		if (fil == dev_M - 1) {
-			for (int i = pos; i >= dev_N; i -= dev_N) {
-				if (dev_tablero[i * 2] == '0') {
-					if (dev_tablero[(i - dev_N) * 2] != '0') {
-						dev_tablero[i * 2] = dev_tablero[(i - dev_N) * 2];
-						dev_tablero[i * 2 + 1] = dev_tablero[(i - dev_N) * 2 + 1];
-						dev_tablero[(i - dev_N) * 2] = '0';
-						dev_tablero[(i - dev_N) * 2 + 1] = '0';
-					}
-				}
+	//Si la fila se corresponde con la última del tablero, nos recorremos la columna hacia arriba hasta encontrar bloques de aire
+	if (dev_N > col && dev_M > fil && fil == dev_M - 1) {
+		for (int i = pos; i >= dev_N * 2; i -= dev_N * 2) {
+			//Si tenemos un bloque de aire y el de arriba no lo es, tenemos que hacer que caiga la ficha
+			if (dev_tablero[i] == '0' && dev_tablero[(i - dev_N * 2)] != '0') {
+				dev_tablero[i] = dev_tablero[(i - dev_N * 2)];				//Bajamos la ficha
+				dev_tablero[i + 1] = dev_tablero[(i - dev_N * 2) + 1];
+				dev_tablero[(i - dev_N * 2)] = '0';								//Ponemos el bloque de aire en la posición de encima
+				dev_tablero[(i - dev_N * 2) + 1] = '0';
 			}
 		}
 	}
+
+	//for (int i = dev_M - 1; i == 0; i--) {
+
+
+		//__syncthreads();
+	//}
+
 }
 
 __global__ void eliminar_fichas(char* dev_tablero, int* dev_coordenadas, int* dev_fichaInf) {
@@ -103,24 +108,14 @@ __global__ void eliminar_fichas(char* dev_tablero, int* dev_coordenadas, int* de
 		tab_shared[pos_shared + 1] = dev_tablero[idx + 1];
 	}
 	else {
-		tab_shared[pos_shared] = '0';
-		tab_shared[pos_shared + 1] = '0';
+		tab_shared[pos_shared] = 'F';
+		tab_shared[pos_shared + 1] = 'F';
 	}
 	__syncthreads();
 
-	if (blockIdx.x == 0 && blockIdx.y == 0) {
-		if (idx == 0) {
-			for (int i = 0; i < TESELA_X * TESELA_Y * 2; i += 2) {
-				printf("elem: %d\n", tab_shared[i]);
-			}
-		}
-	}
-
 	if (dev_N > col && dev_M > fil && tab_shared[pos_shared] == elem && tab_shared[pos_shared] != '0') {
-		/*if (blockIdx.x == 0 && blockIdx.y == 0)
-			printf("Yo si entro, pos: %d\n", idx);
 
-		if (col + 1 < dev_N) {
+		if (!encontrado && col + 1 < dev_N) {
 			if (threadIdx.x + 1 < TESELA_X) {
 				if (tab_shared[pos_shared + 2] == '0')
 					encontrado = true;
@@ -130,8 +125,8 @@ __global__ void eliminar_fichas(char* dev_tablero, int* dev_coordenadas, int* de
 					encontrado = true;
 			}
 		}
-		if (col - 1 >= 0) { 
-			if (threadIdx.x - 1 >= 0) {
+		if (!encontrado && col - 1 >= 0) {
+			if ((int)threadIdx.x - 1 >= 0) {
 				if (tab_shared[pos_shared - 2] == '0')
 					encontrado = true;
 			}
@@ -140,7 +135,8 @@ __global__ void eliminar_fichas(char* dev_tablero, int* dev_coordenadas, int* de
 					encontrado = true;
 			}
 		}
-		if (fil + 1 < dev_M) { // && dev_tablero[idx + (dev_N * 2)] == '0') {
+		//mira abajo
+		if (!encontrado && fil + 1 < dev_M) {
 			if (threadIdx.y + 1 < TESELA_Y) {
 				if (tab_shared[pos_shared + (TESELA_X * 2)] == '0')
 					encontrado = true;
@@ -150,8 +146,9 @@ __global__ void eliminar_fichas(char* dev_tablero, int* dev_coordenadas, int* de
 					encontrado = true;
 			}
 		}
-		if (fil - 1 >= 0) { // && dev_tablero[idx - (dev_N * 2)] == '0') {
-			if (threadIdx.y - 1 >= 0) {
+		//mira arriba
+		if (!encontrado && fil - 1 >= 0) {
+			if ((int)threadIdx.y - 1 >= 0) {
 				if (tab_shared[pos_shared - (TESELA_X * 2)] == '0')
 					encontrado = true;
 			}
@@ -165,32 +162,14 @@ __global__ void eliminar_fichas(char* dev_tablero, int* dev_coordenadas, int* de
 			tab_shared[pos_shared] = '0';
 			atomicAdd(&dev_fichaInf[1], 1);
 			atomicSub(&dev_fichaInf[0], 1);
-		}*/
-
-		if (col + 1 < dev_N && dev_tablero[idx + 2] == '0') {
-			encontrado = true;
-		}
-		else if (col - 1 >= 0 && dev_tablero[idx - 2] == '0') {
-			encontrado = true;
-		}
-		else if (fil + 1 < dev_M && dev_tablero[idx + (dev_N * 2)] == '0') {
-			encontrado = true;
-		}
-		else if (fil - 1 >= 0 && dev_tablero[idx - (dev_N * 2)] == '0') {
-			encontrado = true;
-		}
-		if (encontrado) {
-			dev_tablero[idx] = '0';
-			atomicAdd(&dev_fichaInf[1], 1);
-			atomicSub(&dev_fichaInf[0], 1);
 		}
 	}
 	__syncthreads();
 
-	/*if (dev_N > col && dev_M > fil) {
+	if (dev_N > col && dev_M > fil) {
 		dev_tablero[idx] = tab_shared[pos_shared];
 		dev_tablero[idx + 1] = tab_shared[pos_shared + 1];
-	}*/
+	}
 
 }
 
@@ -448,12 +427,10 @@ int main(int argc, const char* argv[]) {
 	setup_kernel << <blocksInGrid, threadsInBlock >> > (dev_states, time(0));
 
 	while (h_fichaInf[1] != 0) {
-		printf("\nHOla\n");
 		bajar_fichas << <blocksInGrid, threadsInBlock >> > (dev_tablero);
 		cudaMemcpy(h_tablero, dev_tablero, SIZE, cudaMemcpyDeviceToHost);
 		mostrar_tablero(h_tablero);
 		generar_fichas << <blocksInGrid, threadsInBlock >> > (dev_tablero, dev_states, dev_fichaInf);
-		
 		cudaMemcpy(h_tablero, dev_tablero, SIZE, cudaMemcpyDeviceToHost);
 		mostrar_tablero(h_tablero);
 		cudaMemcpy(h_fichaInf, dev_fichaInf, size_ficha, cudaMemcpyDeviceToHost);
@@ -492,6 +469,7 @@ int main(int argc, const char* argv[]) {
 
 		if ((int)h_tablero[ficha] <= 6) {
 			colocar_fichaEX << <blocksInGrid, threadsInBlock >> > (dev_tablero, dev_coordenadas, dev_fichaInf, dev_states);
+			//cudaMemcpy(h_tablero, dev_tablero, SIZE, cudaMemcpyDeviceToHost);
 			cudaMemcpy(h_fichaInf, dev_fichaInf, size_ficha, cudaMemcpyDeviceToHost);
 			int salir;
 			do {
@@ -518,11 +496,10 @@ int main(int argc, const char* argv[]) {
 
 		printf("\nEliminadas: %d\n", h_fichaInf[1]);
 		if (h_fichaInf[1] == 1) vidas--;
-
+		printf("Nos atascamos\n");
 		while (h_fichaInf[1] != 0) {
 			bajar_fichas << <blocksInGrid, threadsInBlock >> > (dev_tablero);
 			generar_fichas << <blocksInGrid, threadsInBlock >> > (dev_tablero, dev_states, dev_fichaInf);
-
 			cudaMemcpy(h_tablero, dev_tablero, SIZE, cudaMemcpyDeviceToHost);
 			mostrar_tablero(h_tablero);
 			cudaMemcpy(h_fichaInf, dev_fichaInf, size_ficha, cudaMemcpyDeviceToHost);
