@@ -1,0 +1,4 @@
+﻿C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\MSBuild\Microsoft\VC\v160\Microsoft.CppBuild.targets(499,5): warning MSB8004: El directorio Output no termina con una barra diagonal final. Esta instancia de compilación agregará la barra diagonal porque es necesaria para que se pueda evaluar correctamente el directorio Output.
+     Creando biblioteca .\x64\Ejecutable\PECL1.lib y objeto .\x64\Ejecutable\PECL1.exp
+  LINK : se especificó /LTCG pero no se requiere generación de código; quite /LTCG de la línea de comandos de vínculo para mejorar el rendimiento del vinculador
+  PECL1.vcxproj -> C:\Users\mfran\Desktop\TercerAño\SegundoCuatri\Paradigmas Avanzados de Programacion PAP\Laboratorio\PECL1\PECL1\x64\Ejecutable\PECL1.exe
