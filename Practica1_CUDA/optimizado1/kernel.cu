@@ -43,7 +43,6 @@ __global__ void generar_fichas(char* dev_tablero, curandState* globalState, int*
 			curandState localState = globalState[idx];								//Cogemos la semilla calculada anteriormente
 			dev_tablero[pos] = (int)(curand_uniform(&localState) * dev_DIF) + 1;	//Obtenemos el valor aleatorio y actualizamos la semilla
 			globalState[idx] = localState;											//Guardamos la semilla actualizada
-
 			atomicSub(&dev_fichasInf[1], 1);										//Restamos 1 al número de bloques de aire
 		}
 	}
@@ -238,40 +237,88 @@ void mostrar_tablero(char* tablero) {
 	printf("\n-----------------------------------------------------------\n");
 }
 
+bool es_primo(int n) {
+	int i;
+	if (n <= 1) {
+		return false;
+	}
+	for (i = 2; i * i <= n; i++) {
+		if (n % i == 0) {
+			return false;
+		}
+	}
+	return true;
+}
+
+void obtener_factores(int x, int* N_x, int* N_y, int limite) {
+	int num1, num2;
+	if (es_primo(x)) x++;
+	for (num1 = 2; num1 <= x; num1++) {
+		if (x % num1 == 0) {
+			num2 = x / num1;
+			*N_x = num2;
+			*N_y = num1;
+			if (num1 < limite && num2 < limite)
+				break;
+		}
+	}
+}
+
 int main(int argc, const char* argv[]) {
 	cudaFree(0);
 
 	//Datos usuario
-	vidas = 200;
-	//N = 9;					//columnas
-	//M = 3;					//filas
-	//dif = 4;
-	//ejecucion = 'a';
+	vidas = 5;
 
-	//Pedir datos al usuario
-	do {
-		printf("Introduce el numero de filas del tablero: ");
-		scanf("%d", &M);
-	} while ((int)M < 1);
+	//Pedir datos al usuario por comando
+	if (argc > 1) {
+		if (argc != 5) {
+			return -1;
+		}
+		printf("Hasta aqui si\n");
+		N = atoi(argv[3]);
+		M = atoi(argv[4]);
 
-	do {
-		printf("Introduce el numero de columnas del tablero: ");
-		scanf("%d", &N);
-	} while ((int)N < 1);
+		printf("sigue aqui si %d -- %d\n", N, M);
+		if (argv[2][0] == '1') {
+			dif = 4;
+		}
+		else {
+			dif = 6;
+		}
 
-	do {
-		printf("Introduce el tipo de ejecucion (m --> Manual / a --> Automatica): ");
-		fflush(stdout);
-		scanf("%c", &ejecucion);
-	} while (ejecucion != 'm' && ejecucion != 'a');
+		if (argv[1][1] == 'a') {
+			ejecucion = 'a';
+		}
+		else {
+			ejecucion = 'm';
+		}
+	}
+	else {
+		//Pedir datos al usuario por consola
+		do {
+			printf("Introduce el numero de filas del tablero: ");
+			scanf("%d", &M);
+		} while ((int)M < 1);
 
-	do {
-		printf("Introduce la dificultad del juego (1 --> Facil / 2 --> Dificil): ");
-		scanf("%d", &dif);
-	} while (dif != 1 && dif != 2);
+		do {
+			printf("Introduce el numero de columnas del tablero: ");
+			scanf("%d", &N);
+		} while ((int)N < 1);
 
-	if (dif == 1) dif = 4;
-	else dif = 6;
+		do {
+			printf("Introduce el tipo de ejecucion (m --> Manual / a --> Automatica): ");
+			scanf("%c", &ejecucion);
+		} while (ejecucion != 'm' && ejecucion != 'a');
+
+		do {
+			printf("Introduce la dificultad del juego (1 --> Facil / 2 --> Dificil): ");
+			scanf("%d", &dif);
+		} while (dif != 1 && dif != 2);
+
+		if (dif == 1) dif = 4;
+		else dif = 6;
+	}
 
 	//Optimizar dimensiones
 	cudaDeviceProp deviceProp;
@@ -279,6 +326,23 @@ int main(int argc, const char* argv[]) {
 	printf("\nNombre GPU: %s\n", deviceProp.name);
 	int BLOCK_SIZE = sqrt(deviceProp.maxThreadsPerBlock);
 	printf("\nBlock size: %d\n", BLOCK_SIZE);
+
+	int x_aux = ceil((float)N / 2);
+	int y_aux = ceil((float)M / 2);
+
+	int N_x, N_y, M_x, M_y;
+	
+	obtener_factores(N, &N_x, &N_y, BLOCK_SIZE);
+	obtener_factores(M, &M_x, &M_y, BLOCK_SIZE);
+
+	printf("N: %d -- %d\n", N_x, N_y);
+	printf("M: %d -- %d\n\n", M_x, M_y);
+
+	printf("BlocksInGrid (%d, %d)\n", N_y, M_y);
+	printf("ThreadsInBlock (%d, %d)\n", N_x, M_x);
+	dim3 blocksInGrid(N_y, M_y);
+	dim3 threadsInBlock(N_x, M_x);
+
 
 	//Declaración de variables
 	int SIZE = N * M * 2 * sizeof(char);
@@ -301,9 +365,6 @@ int main(int argc, const char* argv[]) {
 	cudaMalloc((void**)&dev_coordenadas, size_coord);							//Reserva memoria global para dev_coordenadas
 	cudaMalloc((void**)&dev_fichaInf, size_ficha);								//Reserva memoria global para dev_fichaInf
 	cudaMalloc((void**)&dev_tablero, SIZE);										//Reserva memoria global para dev_tablero
-
-	dim3 blocksInGrid(2, 2);
-	dim3 threadsInBlock(5, 2);
 
 	//Inicializar tablero
 	//---------------------------------------------------------------------------------------------
@@ -363,7 +424,7 @@ int main(int argc, const char* argv[]) {
 			colocar_fichaEX << <blocksInGrid, threadsInBlock >> > (dev_tablero, dev_coordenadas, dev_fichaInf, dev_states);		//Colocamos la ficha a eliminar
 			cudaMemcpy(h_fichaInf, dev_fichaInf, size_ficha, cudaMemcpyDeviceToHost);
 			int salir;
-			do {																//Eliminamos fichas del tablero de 
+			do {																//Eliminamos fichas del tablero 
 				salir = h_fichaInf[0];
 				eliminar_fichas << <blocksInGrid, threadsInBlock >> > (dev_tablero, dev_coordenadas, dev_fichaInf);
 				cudaMemcpy(h_fichaInf, dev_fichaInf, size_ficha, cudaMemcpyDeviceToHost);

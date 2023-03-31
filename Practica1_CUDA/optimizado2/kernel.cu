@@ -5,9 +5,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <list>
-
-using namespace std;
 
 __constant__ int dev_N;		//Número de columnas (memoria constante)
 __constant__ int dev_M;		//Número de filas (memoria constante)
@@ -388,35 +385,57 @@ int main(int argc, const char* argv[]) {
 	cudaFree(0);
 
 	//Datos usuario
-	vidas = 100;
-	//N = 9;					//columnas
-	//M = 3;					//filas
-	//dif = 4;
-	//ejecucion = 'a';
+	vidas = 5;
 
-	//Pedir datos al usuario
-	do {
-		printf("Introduce el numero de filas del tablero: ");
-		scanf("%d", &M);
-	} while ((int)M < 1);
+	//Pedir datos al usuario por comando
+	if (argc > 1) {
+		if (argc != 5) {
+			return -1;
+		}
+		printf("Hasta aqui si\n");
+		N = atoi(argv[3]);
+		M = atoi(argv[4]);
 
-	do {
-		printf("Introduce el numero de columnas del tablero: ");
-		scanf("%d", &N);
-	} while ((int)N < 1);
+		printf("sigue aqui si %d -- %d\n", N, M);
+		if (argv[2][0] == '1') {
+			dif = 4;
+		}
+		else {
+			dif = 6;
+		}
 
-	do {
-		printf("Introduce el tipo de ejecucion (m --> Manual / a --> Automatica): ");
-		scanf("%c", &ejecucion);
-	} while (ejecucion != 'm' && ejecucion != 'a');
+		if (argv[1][1] == 'a') {
+			ejecucion = 'a';
+		}
+		else {
+			ejecucion = 'm';
+		}
+	}
+	else {
+		//Pedir datos al usuario por consola
+		do {
+			printf("Introduce el numero de filas del tablero: ");
+			scanf("%d", &M);
+		} while ((int)M < 1);
 
-	do {
-		printf("Introduce la dificultad del juego (1 --> Facil / 2 --> Dificil): ");
-		scanf("%d", &dif);
-	} while (dif != 1 && dif != 2);
+		do {
+			printf("Introduce el numero de columnas del tablero: ");
+			scanf("%d", &N);
+		} while ((int)N < 1);
 
-	if (dif == 1) dif = 4;
-	else dif = 6;
+		do {
+			printf("Introduce el tipo de ejecucion (m --> Manual / a --> Automatica): ");
+			scanf("%c", &ejecucion);
+		} while (ejecucion != 'm' && ejecucion != 'a');
+
+		do {
+			printf("Introduce la dificultad del juego (1 --> Facil / 2 --> Dificil): ");
+			scanf("%d", &dif);
+		} while (dif != 1 && dif != 2);
+
+		if (dif == 1) dif = 4;
+		else dif = 6;
+	}
 
 	//Optimizar dimensiones
 	cudaDeviceProp deviceProp;
@@ -427,6 +446,9 @@ int main(int argc, const char* argv[]) {
 
 	BLQ_X = ceil((float)N / TESELA_X);
 	BLQ_Y = ceil((float)M / TESELA_Y);
+
+	dim3 blocksInGrid(BLQ_X, BLQ_Y);
+	dim3 threadsInBlock(TESELA_X, TESELA_Y);
 	printf("TESELA: %d, %d -- DIM:%d, %d --> tam %d, %d", TESELA_X, TESELA_Y , N, M, BLQ_X, BLQ_Y);
 
 	//Declaración de variables
@@ -449,10 +471,7 @@ int main(int argc, const char* argv[]) {
 	cudaMalloc(&dev_states, N * sizeof(curandState));								//Reserva memoria global para dev_states
 	cudaMalloc((void**)&dev_coordenadas, size_coord);								//Reserva memoria global para dev_coordenadas
 	cudaMalloc((void**)&dev_fichaInf, size_ficha);									//Reserva memoria global para dev_fichaInf
-	cudaMalloc((void**)&dev_tablero, SIZE);											//Reserva memoria global para dev_tablero
-
-	dim3 blocksInGrid(BLQ_X, BLQ_Y);
-	dim3 threadsInBlock(TESELA_X, TESELA_Y);
+	cudaMalloc((void**)&dev_tablero, SIZE);											//Reserva memoria global para 
 
 	//Inicializar tablero
 	//---------------------------------------------------------------------------------------------
