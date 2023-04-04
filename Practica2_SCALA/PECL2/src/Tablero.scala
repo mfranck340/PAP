@@ -41,8 +41,23 @@ class Tablero(col:Int, fil:Int, dif:Int) {
     }
   }
 
+  private def invertirLista(x: List[Int]): List[Int] = {
+    x match {
+      case Nil => Nil
+      case _ => concatenarListas(invertirLista(x.tail), x.head :: Nil)
+    }
+  }
+
   def mostrarTablero(): Unit = {
     mostrarTableroAux(contenido)
+  }
+
+  def generarFichas(): Unit = {
+
+  }
+
+  def bajarFichas(): Unit = {
+
   }
 
   def getContenido(): List[Int] = {
