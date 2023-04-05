@@ -1,3 +1,5 @@
+import scala.annotation.tailrec
+
 class Tablero() {
   private val rand = new scala.util.Random(System.currentTimeMillis())
 
@@ -8,6 +10,108 @@ class Tablero() {
      }
   }
 
+  def mostrarTablero(tablero: List[Int], n: Int): Unit = {        // esto se puede quitar y dejar solo la aux
+    mostrarTableroAux(tablero, n)
+  }
+
+  def actualizarTablero(tablero: List[Int], col: Int, dif: Int): List[Int] = {
+    actualizarTableroAux(tablero, col, dif, true)
+  }
+
+  def interactuarConTablero(tablero:List[Int], cordX:Int, cordY:Int, col:Int, dif:Int): (List[Int], Boolean) = {
+    val (tabAux, vidas) = realizarMovimiento(tablero, cordX, cordY, col, dif)
+    (actualizarTablero(tabAux, col, dif), vidas)
+  }
+
+  private def realizarMovimiento(tablero:List[Int], cordX:Int, cordY:Int, col:Int, dif:Int): (List[Int], Boolean) = {
+    val elem = getElem(cordY * col + cordX, tablero)
+    elem match {
+      case _ if (elem < 7) =>
+        sustituirFicha(eliminarFichas(tablero, elem, lengthCustom(tablero) - 1, cordY * col + cordX, col), cordY * col + cordX, elem, dif)
+      //case 8 => activarBomba()
+      //case 9 => activarTnt()
+      //case _ => activarRompe()
+    }
+  }
+
+  private def sustituirFicha(tablero: List[Int], pos: Int, elem: Int, dif: Int): (List[Int], Boolean) = {
+    val fichas = contarFichasEliminadas(tablero)
+    if (fichas == 1)
+      (insertar(elem, pos, tablero), true)
+    else if (fichas == 5)
+      (insertar(8, pos, tablero), false)
+    else if (fichas == 6)
+      (insertar(9, pos, tablero), false)
+    else if (fichas >= 7)
+      (insertar(10 + rand.between(1, dif), pos, tablero), false)
+    else
+      (tablero, false)
+  }
+
+  @tailrec
+  private def eliminarFichas(tablero:List[Int], elem:Int, pos:Int, posFin:Int, col:Int): List[Int] = {
+    pos match {
+      case -1 => tablero
+      case _ => {
+        if (getElem(pos, tablero) == elem && buscarCamino(tablero, pos, posFin, col, lengthCustom(tablero) / col, elem))
+          eliminarFichas(insertar(0, pos, tablero), elem, pos - 1, posFin, col)
+
+        else
+          eliminarFichas(tablero, elem, pos - 1, posFin, col)
+      }
+    }
+  }
+
+  private def buscarCamino(tablero: List[Int], posIni: Int, posFin: Int, col: Int, fil: Int, elem: Int): Boolean = {
+    if (posIni == posFin) true
+
+    else {
+      val tabAux = insertar(-1, posIni, tablero)
+      if ((posIni + 1) % col != 0) {
+        if (getElem(posIni + 1, tablero) == elem) {
+          if (buscarCamino(tabAux, posIni + 1, posFin, col, fil, elem)) return true
+        }
+        else if (getElem(posIni + 1, tablero) == 0) {
+          return true
+        }
+      }
+
+      if (posIni % col != 0) {
+        if (getElem(posIni - 1, tablero) == elem) {
+          if (buscarCamino(tabAux, posIni - 1, posFin, col, fil, elem)) return true
+        }
+        else if (getElem(posIni - 1, tablero) == 0) {
+          return true
+        }
+      }
+
+      if (posIni >= col) {
+        if (getElem(posIni - col, tablero) == elem) {
+          if (buscarCamino(tabAux, posIni - col, posFin, col, fil, elem)) return true
+        }
+        else if (getElem(posIni - col, tablero) == 0) {
+          return true
+        }
+      }
+
+      if (posIni < col * (fil - 1))
+        if (getElem(posIni + col, tablero) == elem) {
+          if (buscarCamino(tabAux, posIni + col, posFin, col, fil, elem)) return true
+        }
+        else if (getElem(posIni + col, tablero) == 0) {
+          return true
+        }
+
+      false
+    }
+  }
+
+  //def activarBomba(): List[Int]
+
+  //def activarTnt(): List[Int]
+
+  //def activarRompe(): List[Int]
+
   private def concatenarListas(x:List[Int], y:List[Int]): List[Int] = {
     x match {
       case Nil => y
@@ -16,6 +120,7 @@ class Tablero() {
     }
   }
 
+  @tailrec
   private def mostrarTableroAux(x:List[Int], n:Int): Unit = {
     x match {
       case Nil =>  print("\n" + "---" * (n - 1) + "----")
@@ -23,10 +128,14 @@ class Tablero() {
         if (lengthCustom(x) % n == 0) {
           print("\n" + "---" * (n - 1) + "----" + "\n|")
         }
-        if (x.head < 10)
+        if (x.head < 7)                                             //se podria cambiar por un match
           print(x.head + " |")
+        else if (x.head == 8)
+          print("B |")
+        else if (x.head == 9)
+          print("T |")
         else
-          print(x.head + "|")
+            print(s"R${x.head % 10}|")
         mostrarTableroAux(x.tail, n)
     }
   }
@@ -38,18 +147,14 @@ class Tablero() {
     }
   }
 
-  def reverseCustom(x: List[Int]): List[Int] = {
+  private def reverseCustom(x: List[Int]): List[Int] = {
     x match {
       case Nil => Nil
       case _ => concatenarListas(reverseCustom(x.tail), x.head :: Nil)
     }
   }
 
-  def mostrarTablero(tablero:List[Int], n:Int): Unit = {
-    mostrarTableroAux(tablero, n)
-  }
-
-  def generarFichas(tablero:List[Int], dif:Int, col:Int): List[Int] = {
+  private def generarFichas(tablero:List[Int], dif:Int, col:Int): List[Int] = {
     col match {
       case 0 => tablero
       case _ =>
@@ -72,6 +177,7 @@ class Tablero() {
   }
 
   //Funcion para obtener un elemento de la matriz unidimensional
+  @tailrec
   private def getElem(index: Int, matriz: List[Int]): Int = {
     index match {
       case 0 => matriz.head
@@ -79,7 +185,8 @@ class Tablero() {
     }
   }
 
-  def bajarFichas(tablero:List[Int], col:Int, pos:Int): List[Int] = {
+  @tailrec
+  private def bajarFichas(tablero:List[Int], col:Int, pos:Int): List[Int] = {
     if (pos == col - 1)
       tablero
     else {
@@ -90,6 +197,7 @@ class Tablero() {
     }
   }
 
+  @tailrec
   private def comprobarTablero(tablero:List[Int]): Boolean = {
     tablero match {
       case Nil => false
@@ -99,20 +207,25 @@ class Tablero() {
     }
   }
 
-  def actualizarTableroAux(tablero:List[Int], col:Int, dif:Int, continuar:Boolean): List[Int] = {
-    continuar match {
-      case false => tablero
-      case _ => {
-        val tabAux = generarFichas(bajarFichas(tablero, col, lengthCustom(tablero) - 1), dif, col)
-        actualizarTableroAux(tabAux, col, dif, comprobarTablero(tabAux))
-      }
+  private def contarFichasEliminadas(tablero: List[Int]): Int = {
+    tablero match {
+      case Nil => 0
+      case _ =>
+        if (tablero.head == 0) 1 + contarFichasEliminadas(tablero.tail)
+        else contarFichasEliminadas(tablero.tail)
     }
   }
 
-  def actualizarTablero(tablero:List[Int], col:Int, dif:Int): List[Int] = {
-    actualizarTableroAux(tablero, col, dif, true)
+  @tailrec
+  private def actualizarTableroAux(tablero:List[Int], col:Int, dif:Int, continuar:Boolean): List[Int] = {
+    if (continuar) {
+      val tabAux = generarFichas(bajarFichas(tablero, col, lengthCustom(tablero) - 1), dif, col)
+      //mostrarTablero(tabAux, col)
+      actualizarTableroAux(tabAux, col, dif, comprobarTablero(tabAux))
+    } else {
+      tablero
+    }
   }
-
 
 
 }

@@ -1,7 +1,7 @@
 class Game {
 
   private val vidas = 5
-  private val rand = new scala.util.Random
+  private val rand = new scala.util.Random(System.currentTimeMillis())
   private val tab = new Tablero
 
   def run(): Unit = {
@@ -16,8 +16,8 @@ class Game {
     val modo = scala.io.StdIn.readChar()*/
 
     //Variables de prueba
-    val col = 10
-    val fil = 10
+    val col = 6
+    val fil = 6
     val dif = 4
     val mod = 'a'
     val tablero = tab.inicializarTablero(fil * col)
@@ -25,7 +25,7 @@ class Game {
     println("- START GAME :) - ")
 
     tab.mostrarTablero(tablero, col)
-    runAux(col, fil, tablero, dif, mod, vidas)
+    runAux(col, fil, tab.actualizarTablero(tablero, col, dif), dif, mod, vidas)
 
     println("\n- GAME OVER :( -\n")
   }
@@ -33,14 +33,18 @@ class Game {
   //Termina cuando vidas = 0
   private def runAux(col:Int, fil:Int, tablero:List[Int], dif:Int, mod:Char, vidas:Int): Unit = {
     //aqui un match para las vidas
+    println(s"\nVIDAS: ${vidas}")
     vidas match {
       case 0 => None
       case _ =>
+        tab.mostrarTablero(tablero, col)
         mod match {
           case 'a' => {
             val x = rand.nextInt(col)
             val y = rand.nextInt(fil)
             println(s"\nCoordenadas (${x}, ${y})")
+            val (tabAux, restar) = tab.interactuarConTablero(tablero, x, y, col, dif)
+            runAux(col, fil, tabAux, dif, mod, if (restar) vidas - 1 else vidas)
           }
           case 'm' => {
             println("\nIntroduce la columna: ")
@@ -48,17 +52,10 @@ class Game {
             println("Introduce la fila: ")
             val y = scala.io.StdIn.readInt()
             println(s"Coordenadas (${x}, ${y})")
+            val (tabAux, restar) = tab.interactuarConTablero(tablero, x, y, col, dif)
+            runAux(col, fil, tabAux, dif, mod, if (restar) vidas - 1 else vidas)
           }
         }
-
-        val prueba3 = tab.actualizarTablero(tablero, col, dif)
-        tab.mostrarTablero(prueba3, col)
-
-
-      //pedir coordenadas al usuario
-      //metodos de bajar y generar en una sola linea creo
-      //o creo que habria que hacer una recursividad para ejecutar esto n veces para saber cuando dejar de bajar fichas
-      //el resultado anterior se pasa a la recursividad y asi el tablero es el nuevo
     }
   }
 }
