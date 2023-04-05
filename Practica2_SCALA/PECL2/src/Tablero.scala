@@ -26,7 +26,7 @@ class Tablero() {
   private def realizarMovimiento(tablero:List[Int], cordX:Int, cordY:Int, col:Int, dif:Int): (List[Int], Boolean) = {
     val elem = getElem(cordY * col + cordX, tablero)
     elem match {
-      case _ if (elem < 7) =>
+      case _ if elem < 7 =>
         sustituirFicha(eliminarFichas(tablero, elem, lengthCustom(tablero) - 1, cordY * col + cordX, col), cordY * col + cordX, elem, dif)
       //case 8 => activarBomba()
       //case 9 => activarTnt()
@@ -52,13 +52,12 @@ class Tablero() {
   private def eliminarFichas(tablero:List[Int], elem:Int, pos:Int, posFin:Int, col:Int): List[Int] = {
     pos match {
       case -1 => tablero
-      case _ => {
+      case _ =>
         if (getElem(pos, tablero) == elem && buscarCamino(tablero, pos, posFin, col, lengthCustom(tablero) / col, elem))
           eliminarFichas(insertar(0, pos, tablero), elem, pos - 1, posFin, col)
 
         else
           eliminarFichas(tablero, elem, pos - 1, posFin, col)
-      }
     }
   }
 
@@ -112,13 +111,13 @@ class Tablero() {
 
   //def activarRompe(): List[Int]
 
-  private def concatenarListas(x:List[Int], y:List[Int]): List[Int] = {
+  /*private def concatenarListas(x:List[Int], y:List[Int]): List[Int] = {
     x match {
       case Nil => y
       case n :: Nil => n :: y
       case head :: tail => head::concatenarListas(tail, y)
     }
-  }
+  }*/
 
   @tailrec
   private def mostrarTableroAux(x:List[Int], n:Int): Unit = {
@@ -147,12 +146,12 @@ class Tablero() {
     }
   }
 
-  private def reverseCustom(x: List[Int]): List[Int] = {
+  /*private def reverseCustom(x: List[Int]): List[Int] = {
     x match {
       case Nil => Nil
       case _ => concatenarListas(reverseCustom(x.tail), x.head :: Nil)
     }
-  }
+  }*/
 
   private def generarFichas(tablero:List[Int], dif:Int, col:Int): List[Int] = {
     col match {
@@ -226,6 +225,5 @@ class Tablero() {
       tablero
     }
   }
-
 
 }
