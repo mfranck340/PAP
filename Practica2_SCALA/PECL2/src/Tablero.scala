@@ -15,7 +15,7 @@ class Tablero() {
   }
 
   def actualizarTablero(tablero: List[Int], col: Int, dif: Int): List[Int] = {
-    actualizarTableroAux(tablero, col, dif, true)
+    actualizarTableroAux(tablero, col, dif, comprobarTablero(tablero))
   }
 
   def interactuarConTablero(tablero:List[Int], cordX:Int, cordY:Int, col:Int, dif:Int): (List[Int], Boolean) = {
@@ -23,15 +23,73 @@ class Tablero() {
     (actualizarTablero(tabAux, col, dif), vidas)
   }
 
-  private def realizarMovimiento(tablero:List[Int], cordX:Int, cordY:Int, col:Int, dif:Int): (List[Int], Boolean) = {
+  private def realizarMovimiento(tablero:List[Int], cordX:Int, cordY:Int, col:Int, dif:Int): (List[Int], Boolean) = {       //se podria crear una variable para posicion 'cordY * col + cordX'
     val elem = getElem(cordY * col + cordX, tablero)
     elem match {
       case _ if elem < 7 =>
         sustituirFicha(eliminarFichas(tablero, elem, lengthCustom(tablero) - 1, cordY * col + cordX, col), cordY * col + cordX, elem, dif)
-      //case 8 => activarBomba()
-      //case 9 => activarTnt()
-      //case _ => activarRompe()
+      case 8 =>
+        (activarBomba(tablero, cordY * col + cordX, col, rand.nextInt(2)), false)
+      case 9 =>
+        (activarTnt(tablero, cordY * col + cordX, col), false)                  //Se puede enviar las coordenadas en vez de la posicion
+      case _ =>
+        (insertar(0, cordY * col + cordX, activarRompe(tablero, elem % 10)), false)       //se podria hacer todo dentro de activar rompe
     }
+  }
+
+  private def activarRompe(tablero:List[Int], elem:Int): List[Int] = {
+    activarRompeAux(tablero, elem, lengthCustom(tablero) - 1)
+  }
+
+  @tailrec
+  private def activarRompeAux(tablero:List[Int], elem:Int, pos:Int): List[Int] = {
+    pos match {
+      case -1 => tablero
+      case _ =>
+        if (getElem(pos, tablero) == elem)
+          activarRompeAux(insertar(0, pos, tablero), elem, pos - 1)
+        else
+          activarRompeAux(tablero, elem, pos - 1)
+    }
+  }
+
+  private def activarTnt(tablero:List[Int], posObj:Int, col:Int): List[Int] = {
+    activarTntAux(tablero, posObj, col, lengthCustom(tablero) - 1)
+  }
+
+  @tailrec
+  private def activarTntAux(tablero:List[Int], posObj:Int, col:Int, pos:Int): List[Int] = {
+    pos match {
+      case -1 => tablero
+      case _ =>
+        if (math.sqrt(math.pow(posObj % col - pos % col, 2) + math.pow(posObj / col - pos / col, 2)) <= 4)
+          activarTntAux(insertar(0, pos, tablero), posObj, col, pos - 1)
+        else
+          activarTntAux(tablero, posObj, col, pos - 1)
+    }
+  }
+
+  private def activarBomba(tablero:List[Int], pos:Int, col:Int, opcion:Int): List[Int] = {
+    opcion match {
+      case 0 => eliminarFila(tablero, (pos/col) * col, col)
+      case _ => eliminarColumna(tablero, pos % col, col, lengthCustom(tablero) / col)
+    }
+  }
+
+  @tailrec
+  private def eliminarFila(tablero:List[Int], pos:Int, col:Int): List[Int] = {
+    if (col == 0)
+      tablero
+    else
+      eliminarFila(insertar(0, pos, tablero), pos + 1, col - 1)
+  }
+
+  @tailrec
+  private def eliminarColumna(tablero:List[Int], pos:Int, col:Int, fil:Int): List[Int] = {
+    if (fil == 0)
+      tablero
+    else
+      eliminarColumna(insertar(0, pos, tablero), pos + col, col, fil - 1)
   }
 
   private def sustituirFicha(tablero: List[Int], pos: Int, elem: Int, dif: Int): (List[Int], Boolean) = {
@@ -104,12 +162,6 @@ class Tablero() {
       false
     }
   }
-
-  //def activarBomba(): List[Int]
-
-  //def activarTnt(): List[Int]
-
-  //def activarRompe(): List[Int]
 
   /*private def concatenarListas(x:List[Int], y:List[Int]): List[Int] = {
     x match {
@@ -218,8 +270,8 @@ class Tablero() {
   @tailrec
   private def actualizarTableroAux(tablero:List[Int], col:Int, dif:Int, continuar:Boolean): List[Int] = {
     if (continuar) {
+      mostrarTablero(tablero, col)
       val tabAux = generarFichas(bajarFichas(tablero, col, lengthCustom(tablero) - 1), dif, col)
-      //mostrarTablero(tabAux, col)
       actualizarTableroAux(tabAux, col, dif, comprobarTablero(tabAux))
     } else {
       tablero
