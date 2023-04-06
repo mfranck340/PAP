@@ -1,88 +1,160 @@
 import scala.swing._
+import scala.swing.event._
+import java.awt.{Color, Graphics2D, BasicStroke}
+import java.awt.geom._
 
-class UI extends MainFrame {
-  def restrictHeight(s: Component) {
-    s.maximumSize = new Dimension(Short.MaxValue, s.preferredSize.height)
+// --------------------------------------------------------------------
+
+class Board {
+  private var player = 1
+  private val grid = Array(0, 0, 0,
+    0, 0, 0,
+    0, 0, 0)
+
+  def apply(x: Int, y: Int): Int = grid(3 * y + x)
+
+  def currentPlayer: Int = player
+
+  def play(x: Int, y: Int) {
+    if (this (x, y) == 0) {
+      grid(3 * y + x) = player
+      player = 3 - player
+    }
   }
 
-  title = "GUI Program #5"
-
-  val nameField = new TextField {
-    columns = 32
-  }
-  val likeScala = new CheckBox("I like Scala")
-  likeScala.selected = true
-  val status1 = new RadioButton("학부생")
-  val status2 = new RadioButton("대학원생")
-  val status3 = new RadioButton("교수")
-  status3.selected = true
-  val statusGroup = new ButtonGroup(status1, status2, status3)
-  val gender = new ComboBox(List("don't know", "female", "male"))
-  val commentField = new TextArea {
-    rows = 8; lineWrap = true; wordWrap = true
-  }
-  val pressMe = new ToggleButton("Press me!")
-  pressMe.selected = true
-
-  restrictHeight(nameField)
-  restrictHeight(gender)
-
-  contents = new BoxPanel(Orientation.Vertical) {
-    contents += new BoxPanel(Orientation.Horizontal) {
-      contents += new Label("My name")
-      contents += Swing.HStrut(5)
-      contents += nameField
-    }
-    contents += Swing.VStrut(5)
-    contents += likeScala
-    contents += Swing.VStrut(5)
-    contents += new BoxPanel(Orientation.Horizontal) {
-      contents += status1
-      contents += Swing.HStrut(10)
-      contents += status2
-      contents += Swing.HStrut(10)
-      contents += status3
-    }
-    contents += Swing.VStrut(5)
-    contents += new BoxPanel(Orientation.Horizontal) {
-      contents += new Label("Gender")
-      contents += Swing.HStrut(20)
-      contents += gender
-    }
-    contents += Swing.VStrut(5)
-    contents += new Label("Comments")
-    contents += Swing.VStrut(3)
-    contents += new ScrollPane(commentField)
-    contents += Swing.VStrut(5)
-    contents += new BoxPanel(Orientation.Horizontal) {
-      contents += pressMe
-      contents += Swing.HGlue
-      contents += Button("Close") {
-        reportAndClose()
-      }
-    }
-    for (e <- contents)
-      e.xLayoutAlignment = 0.0
-    border = Swing.EmptyBorder(10, 10, 10, 10)
-  }
-
-  def reportAndClose() {
-    println("Your name: " + nameField.text)
-    println("You like Scala: " + likeScala.selected)
-    println("Undergraduate: " + status1.selected)
-    println("Graduate: " + status2.selected)
-    println("Professor: " + status3.selected)
-    println("Gender: " + gender.selection.item +
-      " (Index: " + gender.selection.index + ")")
-    println("Comments: " + commentField.text)
-    println("'Press me' is pressed: " + pressMe.selected)
-    sys.exit(0)
+  def restart() {
+    for (i <- 0 until 9)
+      grid(i) = 0
+    player = 1
   }
 }
 
-object GuiProgramFive {
+// --------------------------------------------------------------------
+
+case class TicTacToeEvent(x: Int, y: Int) extends Event
+
+// --------------------------------------------------------------------
+
+class Canvas(val board: Board) extends Component {
+  preferredSize = new Dimension(320, 320)
+
+  listenTo(mouse.clicks)
+  reactions += {
+    case MouseClicked(_, p, _, _, _) => mouseClick(p.x, p.y)
+  }
+
+  // returns squareSide, x0, y0, wid
+  private def squareGeometry: (Int, Int, Int, Int) = {
+    val d = size
+    val squareSide = d.height min d.width
+    val x0 = (d.width - squareSide) / 2
+    val y0 = (d.height - squareSide) / 2
+    (squareSide, x0, y0, squareSide / 3)
+  }
+
+  private def mouseClick(x: Int, y: Int): Unit = {
+    val (squareSide, x0, y0, wid) = squareGeometry
+    if (x0 <= x && x < x0 + squareSide &&
+      y0 <= y && y < y0 + squareSide) {
+      val col = (x - x0) / wid
+      val row = (y - y0) / wid
+      publish(TicTacToeEvent(col, row))
+    }
+  }
+
+  override def paintComponent(g: Graphics2D): Unit = {
+    g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING,
+      java.awt.RenderingHints.VALUE_ANTIALIAS_ON)
+    g.setColor(Color.WHITE);
+    val d = size
+    g.fillRect(0, 0, d.width, d.height)
+    val (squareSide, x0, y0, wid) = squareGeometry
+    g.setColor(Color.BLACK)
+    // vertical lines
+    for (x <- 1 to 2)
+      g.draw(new Line2D.Double(x0 + x * wid, y0, x0 + x * wid, y0 + squareSide))
+    // horizontal lines
+    for (y <- 1 to 2)
+      g.draw(new Line2D.Double(x0, y0 + y * wid, x0 + squareSide, y0 + y * wid))
+    g.setStroke(new BasicStroke(3f))
+    for (x <- 0 until 3) {
+      for (y <- 0 until 3) {
+        board(x, y) match {
+          case 1 =>
+            g.setColor(Color.RED)
+            g.draw(new Ellipse2D.Double(x0 + x * wid + 10, y0 + y * wid + 10,
+              wid - 20, wid - 20))
+          case 2 =>
+            g.setColor(new Color(0, 160, 0))
+            val x1 = x0 + x * wid + 10
+            val y1 = y0 + y * wid + 10
+            g.draw(new Line2D.Double(x1, y1, x1 + wid - 20, y1 + wid - 20))
+            g.draw(new Line2D.Double(x1, y1 + wid - 20, x1 + wid - 20, y1))
+          case _ => // draw nothing
+        }
+      }
+    }
+  }
+}
+
+// --------------------------------------------------------------------
+
+class UI(val board: Board) extends MainFrame {
+  private def restrictHeight(s: Component) {
+    s.maximumSize = new Dimension(Short.MaxValue, s.preferredSize.height)
+  }
+
+  title = "Cundy Crosh Soga"
+
+  val canvas = new Canvas(board)
+  val newGameButton = Button("New Game") {
+    newGame()
+  }
+  val turnLabel = new Label("Player 1's turn")
+  turnLabel.foreground = Color.BLUE
+  val quitButton = Button("Quit") {
+    sys.exit(0)
+  }
+  val buttonLine = new BoxPanel(Orientation.Horizontal) {
+    contents += newGameButton
+    contents += Swing.HGlue
+    contents += turnLabel
+    contents += Swing.HGlue
+    contents += quitButton
+  }
+
+  // make sure that resizing only changes the TicTacToeDisplay
+  restrictHeight(buttonLine)
+
+  contents = new BoxPanel(Orientation.Vertical) {
+    contents += canvas
+    contents += Swing.VStrut(10)
+    contents += buttonLine
+    border = Swing.EmptyBorder(10, 10, 10, 10)
+  }
+
+  listenTo(canvas)
+  reactions += {
+    case TicTacToeEvent(x, y) =>
+      board.play(x, y)
+      updateLabelAndBoard()
+  }
+
+  def updateLabelAndBoard() {
+    turnLabel.text = "Player %d's turn".format(board.currentPlayer)
+    canvas.repaint()
+  }
+
+  def newGame() {
+    board.restart()
+    updateLabelAndBoard()
+  }
+}
+
+object TicTacToeThree {
   def main(args: Array[String]) {
-    val ui = new UI
+    val board = new Board
+    val ui = new UI(board)
     ui.visible = true
   }
 }
