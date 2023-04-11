@@ -101,7 +101,7 @@ class Tablero() {
     else if (fichas == 6)
       (insertar(9, pos, tablero), false)
     else if (fichas >= 7)
-      (insertar(10 + rand.between(1, dif), pos, tablero), false)
+      (insertar(10 + rand.between(1, dif + 1), pos, tablero), false)
     else
       (tablero, false)
   }
@@ -264,6 +264,17 @@ class Tablero() {
       case _ =>
         if (tablero.head == 0) 1 + contarFichasEliminadas(tablero.tail)
         else contarFichasEliminadas(tablero.tail)
+    }
+  }
+
+  def eliminarMasFichas(tablero: List[Int], masEliminadas: Int, mejorPos: Int, pos: Int, col: Int, dif: Int): Int = {
+    pos match {
+      case -1 => mejorPos
+      case _ =>
+        val (tabAux, _) = realizarMovimiento(tablero, pos % col, (pos - (pos % col)) / col, col, dif)
+        val eliminadas = contarFichasEliminadas(tabAux)
+        if (eliminadas > masEliminadas) eliminarMasFichas(tablero, eliminadas, pos, pos - 1, col, dif)
+        else eliminarMasFichas(tablero, masEliminadas, mejorPos, pos - 1, col, dif)
     }
   }
 

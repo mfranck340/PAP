@@ -18,10 +18,10 @@ class Game {
     val mod = scala.io.StdIn.readChar()*/
 
     //Variables de prueba
-    val col = 23
-    val fil = 14
+    val col = 9
+    val fil = 7
     val dif = 4
-    val mod = 'm'
+    val mod = 'a'
     val tablero = tab.inicializarTablero(fil * col)
 
     println("- START GAME :) - ")
@@ -40,8 +40,9 @@ class Game {
       case _ =>
         mod match {
           case 'a' =>
-            val x = rand.nextInt(col)
-            val y = rand.nextInt(fil)
+            val pos = tab.eliminarMasFichas(tablero, 0, 0, fil * col - 1, col, dif)
+            val x = pos % col
+            val y = (pos - x) / col
             println(s"\nCoordenadas ($x, $y)")
             val (tabAux, restar) = tab.interactuarConTablero(tablero, x, y, col, dif)             //No se donde colocar esto para que no este duplicado
             runAux(col, fil, tabAux, dif, mod, if (restar) vidas - 1 else vidas)
