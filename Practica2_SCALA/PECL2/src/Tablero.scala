@@ -1,4 +1,5 @@
 import scala.annotation.tailrec
+import scala.swing.Graphics2D
 
 class Tablero() {
   private val rand = new scala.util.Random(System.currentTimeMillis())
@@ -23,7 +24,7 @@ class Tablero() {
     (actualizarTablero(tabAux, col, dif), vidas)
   }
 
-  private def realizarMovimiento(tablero:List[Int], cordX:Int, cordY:Int, col:Int, dif:Int): (List[Int], Boolean) = {       //se podria crear una variable para posicion 'cordY * col + cordX'
+  def realizarMovimiento(tablero:List[Int], cordX:Int, cordY:Int, col:Int, dif:Int): (List[Int], Boolean) = {       //se podria crear una variable para posicion 'cordY * col + cordX'
     val elem = getElem(cordY * col + cordX, tablero)
     elem match {
       case _ if elem < 7 =>
@@ -101,7 +102,7 @@ class Tablero() {
     else if (fichas == 6)
       (insertar(9, pos, tablero), false)
     else if (fichas >= 7)
-      (insertar(10 + rand.between(1, dif), pos, tablero), false)
+      (insertar(10 + rand.between(1, dif + 1), pos, tablero), false)
     else
       (tablero, false)
   }
@@ -163,14 +164,6 @@ class Tablero() {
     }
   }
 
-  /*private def concatenarListas(x:List[Int], y:List[Int]): List[Int] = {
-    x match {
-      case Nil => y
-      case n :: Nil => n :: y
-      case head :: tail => head::concatenarListas(tail, y)
-    }
-  }*/
-
   @tailrec
   private def mostrarTableroAux(x:List[Int], n:Int): Unit = {
     x match {
@@ -198,14 +191,7 @@ class Tablero() {
     }
   }
 
-  /*private def reverseCustom(x: List[Int]): List[Int] = {
-    x match {
-      case Nil => Nil
-      case _ => concatenarListas(reverseCustom(x.tail), x.head :: Nil)
-    }
-  }*/
-
-  private def generarFichas(tablero:List[Int], dif:Int, col:Int): List[Int] = {
+  def generarFichas(tablero:List[Int], dif:Int, col:Int): List[Int] = {
     col match {
       case 0 => tablero
       case _ =>
@@ -228,16 +214,14 @@ class Tablero() {
   }
 
   //Funcion para obtener un elemento de la matriz unidimensional
-  @tailrec
-  private def getElem(index: Int, matriz: List[Int]): Int = {
+  def getElem(index: Int, matriz: List[Int]): Int = {
     index match {
       case 0 => matriz.head
       case _ => getElem(index - 1, matriz.tail)
     }
   }
 
-  @tailrec
-  private def bajarFichas(tablero:List[Int], col:Int, pos:Int): List[Int] = {
+  def bajarFichas(tablero:List[Int], col:Int, pos:Int): List[Int] = {
     if (pos == col - 1)
       tablero
     else {
@@ -248,8 +232,7 @@ class Tablero() {
     }
   }
 
-  @tailrec
-  private def comprobarTablero(tablero:List[Int]): Boolean = {
+  def comprobarTablero(tablero:List[Int]): Boolean = {
     tablero match {
       case Nil => false
       case _ =>
@@ -277,5 +260,4 @@ class Tablero() {
       tablero
     }
   }
-
 }

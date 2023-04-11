@@ -18,10 +18,10 @@ class Game {
     val mod = scala.io.StdIn.readChar()*/
 
     //Variables de prueba
-    val col = 23
-    val fil = 14
+    val col = 4
+    val fil = 4
     val dif = 4
-    val mod = 'm'
+    val mod = 'a'
     val tablero = tab.inicializarTablero(fil * col)
 
     println("- START GAME :) - ")
@@ -38,23 +38,25 @@ class Game {
     vidas match {
       case 0 =>
       case _ =>
-        mod match {
-          case 'a' =>
-            val x = rand.nextInt(col)
-            val y = rand.nextInt(fil)
-            println(s"\nCoordenadas ($x, $y)")
-            val (tabAux, restar) = tab.interactuarConTablero(tablero, x, y, col, dif)             //No se donde colocar esto para que no este duplicado
-            runAux(col, fil, tabAux, dif, mod, if (restar) vidas - 1 else vidas)
-
-          case 'm' =>
-            print(s"\nIntroduce la columna (0 - ${col - 1}): ")
-            val x = scala.io.StdIn.readInt()
-            print(s"Introduce la fila (0 - ${fil - 1}): ")
-            val y = scala.io.StdIn.readInt()
-            println(s"Coordenadas ($x, $y)")
-            val (tabAux, restar) = tab.interactuarConTablero(tablero, x, y, col, dif)
-            runAux(col, fil, tabAux, dif, mod, if (restar) vidas - 1 else vidas)
-        }
+        val (x, y) = if (mod == 'a') getAutomatico(col, fil) else getManual(col, fil)
+        val (tabAux, restar) = tab.interactuarConTablero(tablero, x, y, col, dif)
+        runAux(col, fil, tabAux, dif, mod, if (restar) vidas - 1 else vidas)
     }
+  }
+
+  private def getManual(col:Int, fil:Int): (Int, Int) = {
+    print(s"\nIntroduce la columna (0 - ${col - 1}): ")
+    val x = scala.io.StdIn.readInt()
+    print(s"Introduce la fila (0 - ${fil - 1}): ")
+    val y = scala.io.StdIn.readInt()
+    println(s"Coordenadas ($x, $y)")
+    (x, y)
+  }
+
+  private def getAutomatico(col:Int, fil:Int): (Int, Int) = {
+    val x = rand.nextInt(col)
+    val y = rand.nextInt(fil)
+    println(s"\nCoordenadas ($x, $y)")
+    (x, y)
   }
 }

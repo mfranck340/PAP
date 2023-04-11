@@ -1,160 +1,330 @@
+import java.awt.{BasicStroke, Color, RenderingHints}
+import java.awt.image.BufferedImage
+import java.io.File
+import javax.imageio.ImageIO
+import javax.swing.{ImageIcon, SwingUtilities}
 import scala.swing._
 import scala.swing.event._
-import java.awt.{Color, Graphics2D, BasicStroke}
-import java.awt.geom._
 
 // --------------------------------------------------------------------
-
-class Board {
-  private var player = 1
-  private val grid = Array(0, 0, 0,
-    0, 0, 0,
-    0, 0, 0)
-
-  def apply(x: Int, y: Int): Int = grid(3 * y + x)
-
-  def currentPlayer: Int = player
-
-  def play(x: Int, y: Int) {
-    if (this (x, y) == 0) {
-      grid(3 * y + x) = player
-      player = 3 - player
-    }
-  }
-
-  def restart() {
-    for (i <- 0 until 9)
-      grid(i) = 0
-    player = 1
-  }
-}
+case class SalirEvent() extends Event
 
 // --------------------------------------------------------------------
+class Canvas(tabIn:List[Int], col:Int, fil:Int, mod:Char, dif:Int, tam:Int) extends Component {
+  val tab = new Tablero()
+  private val filas = fil
+  private val columnas = col
+  private val dificultad = dif
+  private val modo = mod
+  private var tablero = tabIn
+  private var vidas = 5
 
-case class TicTacToeEvent(x: Int, y: Int) extends Event
+  val i0 = ImageIO.read(new File("src/resources/bubble.png"))
+  val i1 = ImageIO.read(new File("src/resources/patito_red.png"))
+  val i2 = ImageIO.read(new File("src/resources/patito_blue.png"))
+  val i3 = ImageIO.read(new File("src/resources/patito_green.png"))
+  val i4 = ImageIO.read(new File("src/resources/patito_yellow.png"))
+  val i5 = ImageIO.read(new File("src/resources/patito_pink.png"))
+  val i6 = ImageIO.read(new File("src/resources/patito_white.png"))
+  val i7 = ImageIO.read(new File("src/resources/bomba.png"))
+  val i8 = ImageIO.read(new File("src/resources/tnt.png"))
+  val i9 = ImageIO.read(new File("src/resources/rompe_red.png"))
+  val i10 = ImageIO.read(new File("src/resources/rompe_blue.png"))
+  val i11 = ImageIO.read(new File("src/resources/rompe_green.png"))
+  val i12 = ImageIO.read(new File("src/resources/rompe_yellow.png"))
+  val i13 = ImageIO.read(new File("src/resources/rompe_pink.png"))
+  val i14 = ImageIO.read(new File("src/resources/rompe_white.png"))
 
-// --------------------------------------------------------------------
+  val anchoCelda = tam
+  val altoCelda = tam
 
-class Canvas(val board: Board) extends Component {
-  preferredSize = new Dimension(320, 320)
+  preferredSize = new Dimension(anchoCelda * columnas, altoCelda * filas)
 
+  // Controlador de eventos de clic
   listenTo(mouse.clicks)
+
   reactions += {
-    case MouseClicked(_, p, _, _, _) => mouseClick(p.x, p.y)
-  }
-
-  // returns squareSide, x0, y0, wid
-  private def squareGeometry: (Int, Int, Int, Int) = {
-    val d = size
-    val squareSide = d.height min d.width
-    val x0 = (d.width - squareSide) / 2
-    val y0 = (d.height - squareSide) / 2
-    (squareSide, x0, y0, squareSide / 3)
-  }
-
-  private def mouseClick(x: Int, y: Int): Unit = {
-    val (squareSide, x0, y0, wid) = squareGeometry
-    if (x0 <= x && x < x0 + squareSide &&
-      y0 <= y && y < y0 + squareSide) {
-      val col = (x - x0) / wid
-      val row = (y - y0) / wid
-      publish(TicTacToeEvent(col, row))
-    }
+    case MouseClicked(_, p, _, _, _) =>
+      val fila = p.y / altoCelda
+      val columna = p.x / anchoCelda
+      if (fila < filas && columna < columnas && !tab.comprobarTablero(tablero)) {
+        println(s"Fila: $fila, Columna: $columna")
+        tocar(columna, fila)
+      }
   }
 
   override def paintComponent(g: Graphics2D): Unit = {
-    g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING,
-      java.awt.RenderingHints.VALUE_ANTIALIAS_ON)
-    g.setColor(Color.WHITE);
-    val d = size
-    g.fillRect(0, 0, d.width, d.height)
-    val (squareSide, x0, y0, wid) = squareGeometry
-    g.setColor(Color.BLACK)
-    // vertical lines
-    for (x <- 1 to 2)
-      g.draw(new Line2D.Double(x0 + x * wid, y0, x0 + x * wid, y0 + squareSide))
-    // horizontal lines
-    for (y <- 1 to 2)
-      g.draw(new Line2D.Double(x0, y0 + y * wid, x0 + squareSide, y0 + y * wid))
-    g.setStroke(new BasicStroke(3f))
-    for (x <- 0 until 3) {
-      for (y <- 0 until 3) {
-        board(x, y) match {
-          case 1 =>
-            g.setColor(Color.RED)
-            g.draw(new Ellipse2D.Double(x0 + x * wid + 10, y0 + y * wid + 10,
-              wid - 20, wid - 20))
-          case 2 =>
-            g.setColor(new Color(0, 160, 0))
-            val x1 = x0 + x * wid + 10
-            val y1 = y0 + y * wid + 10
-            g.draw(new Line2D.Double(x1, y1, x1 + wid - 20, y1 + wid - 20))
-            g.draw(new Line2D.Double(x1, y1 + wid - 20, x1 + wid - 20, y1))
-          case _ => // draw nothing
-        }
-      }
+    super.paintComponent(g)
+    g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+    // Dibuja las celdas
+    for {
+      fila <- 0 until filas
+      columna <- 0 until columnas
+    } {
+      val x = columna * anchoCelda
+      val y = fila * altoCelda
+      val image = asignarImagen(fila * columnas + columna, tablero)
+      g.drawImage(image, x, y, anchoCelda, altoCelda, null)
+    }
+
+    if (tab.comprobarTablero(tablero)) {
+      tablero = tab.generarFichas(tab.bajarFichas(tablero, col, col * fil - 1), dif, col)
+      Thread.sleep(200)
+      this.repaint()
+    }
+  }
+
+  def tocar(ejeX:Int, ejeY:Int): Unit = {
+    val (tabAux, borrar) = tab.realizarMovimiento(tablero, ejeX, ejeY, columnas, dificultad)
+    if (borrar)
+      vidas -= 1
+    tablero = tabAux
+    Thread.sleep(150)
+    this.repaint()
+  }
+
+  def asignarImagen(pos:Int, tablero:List[Int]): BufferedImage = {
+    tab.getElem(pos, tablero) match {
+      case 0 => i0
+      case 1 => i1
+      case 2 => i2
+      case 3 => i3
+      case 4 => i4
+      case 5 => i5
+      case 6 => i6
+      case 8 => i7
+      case 9 => i8
+      case 11 => i9
+      case 12 => i10
+      case 13 => i11
+      case 14 => i12
+      case 15 => i13
+      case 16 => i14
     }
   }
 }
 
+
 // --------------------------------------------------------------------
 
-class UI(val board: Board) extends MainFrame {
-  private def restrictHeight(s: Component) {
-    s.maximumSize = new Dimension(Short.MaxValue, s.preferredSize.height)
-  }
+class UI() extends MainFrame {
+
+  private val size_font = 18
+  val tab = new Tablero()
+
+  var col:Int = _
+  var fil:Int = _
+  var modo:Char = _
+  var dif:Int = _
+  val tam_celda = 100
+  var tablero:List[Int] = _
+  var canvas = new Canvas(List(0), 1, 1, 'a', 1, 1)
 
   title = "Cundy Crosh Soga"
 
-  val canvas = new Canvas(board)
-  val newGameButton = Button("New Game") {
-    newGame()
+  //----------------------------------------------------------------------------
+  //Primera ventana
+  val image:BufferedImage = ImageIO.read(new File("src/resources/fondo.jpg"))
+  val startButton = new Button() {
+    font = new Font("Arial", java.awt.Font.BOLD, size_font)
+    action = Action("Start") {
+      obtenerDatos()
+    }
   }
-  val turnLabel = new Label("Player 1's turn")
-  turnLabel.foreground = Color.BLUE
-  val quitButton = Button("Quit") {
-    sys.exit(0)
+  val ventana1 = new BoxPanel(Orientation.Vertical) {
+    preferredSize = new Dimension(image.getWidth, image.getHeight)
+    println(image.getWidth + "  -  " + image.getHeight)
+    override def paintComponent(g: Graphics2D): Unit = {
+      super.paintComponent(g)
+      g.drawImage(image, 0, 0, null)
+    }
+
+    contents += new BoxPanel(Orientation.Horizontal) {
+      contents += Swing.HGlue
+      contents += new Label("Cundy Crosh Soga") {
+        font = new Font("Arial", java.awt.Font.BOLD, 40)
+      }
+      contents += Swing.HGlue
+      border = Swing.EmptyBorder(150, 10, 10, 10)
+      background = new Color(0, 0, 0, 0)
+    }
+    contents += Swing.VStrut(100)
+    contents += new BoxPanel(Orientation.Horizontal) {
+      contents += Swing.HGlue
+      contents += startButton
+      contents += Swing.HGlue
+      background = new Color(0, 0, 0, 0)
+    }
   }
-  val buttonLine = new BoxPanel(Orientation.Horizontal) {
-    contents += newGameButton
-    contents += Swing.HGlue
-    contents += turnLabel
-    contents += Swing.HGlue
-    contents += quitButton
+  // ---------------------------------------------------------------------
+
+  //Segunda ventana
+  val colField = new TextField {
+    font = new Font("Arial", java.awt.Font.BOLD, size_font)
+    columns = 3
+  }
+  val filField = new TextField {
+    font = new Font("Arial", java.awt.Font.BOLD, size_font)
+    columns = 3
+  }
+  val modeComboBox = new ComboBox(List("Automatico", "Manual")) {
+    font = new Font("Arial", java.awt.Font.BOLD, size_font)
+  }
+  val difficultyComboBox = new ComboBox(List("Facil", "Dificil")) {
+    font = new Font("Arial", java.awt.Font.BOLD, size_font)
+  }
+  val continueButton = new Button() {
+    font = new Font("Arial", java.awt.Font.BOLD, size_font)
+    action = Action("Start") {
+      comenzarJuego()
+    }
   }
 
-  // make sure that resizing only changes the TicTacToeDisplay
-  restrictHeight(buttonLine)
+  val ventana2 = new BoxPanel(Orientation.Vertical) {
+    preferredSize = new Dimension(image.getWidth, image.getHeight)
+    override def paintComponent(g: Graphics2D): Unit = {
+      super.paintComponent(g)
+      g.drawImage(image, 0, 0, null)
+    }
+    //contents += new Label("Configuracion del tablero")
+    contents += new BoxPanel(Orientation.Horizontal) {
+      contents += new Label("Filas: ") {
+        font = new Font("Arial", java.awt.Font.BOLD, size_font)
+      }
+      contents += Swing.HStrut(15)
+      contents += filField
+      contents += Swing.HStrut(30)
+      contents += new Label("Columnas: ") {
+        font = new Font("Arial", java.awt.Font.BOLD, size_font)
+      }
+      contents += Swing.HStrut(15)
+      contents += colField
+      border = Swing.EmptyBorder(10, 10, 10, 10)
+      background = new Color(0, 0, 0, 0)
+    }
+    contents += Swing.VStrut(20)
+    contents += new BoxPanel(Orientation.Horizontal) {
+      contents += new Label("Modo de ejecucion: ") {
+        font = new Font("Arial", java.awt.Font.BOLD, size_font)
+      }
+      contents += Swing.HGlue
+      contents += modeComboBox
+      border = Swing.EmptyBorder(10, 10, 10, 10)
+      background = new Color(0, 0, 0, 0)
+    }
+    contents += Swing.VStrut(20)
+    contents += new BoxPanel(Orientation.Horizontal) {
+      contents += new Label("Dificultad: ") {
+        font = new Font("Arial", java.awt.Font.BOLD, size_font)
+      }
+      contents += Swing.HStrut(92)
+      contents += difficultyComboBox
+      border = Swing.EmptyBorder(10, 10, 10, 10)
+      background = new Color(0, 0, 0, 0)
+    }
+    contents += Swing.VStrut(40)
+    contents += new BoxPanel(Orientation.Horizontal) {
+      contents += Swing.HGlue
+      contents += continueButton
+      contents += Swing.HGlue
+      border = Swing.EmptyBorder(10, 10, 10, 10)
+      background = new Color(0, 0, 0, 0)
+    }
 
-  contents = new BoxPanel(Orientation.Vertical) {
-    contents += canvas
-    contents += Swing.VStrut(10)
-    contents += buttonLine
-    border = Swing.EmptyBorder(10, 10, 10, 10)
+    border = Swing.EmptyBorder(90, 190, 80, 190)
+  }
+
+  //--------------------------------------------------------------------------------
+  //Tercera Ventana
+  def crearPantallaGame(col:Int, fil:Int, modo:Char, dif:Int): BoxPanel = {
+    //val imagenGame = ImageIO.read(new File("src/resources/game.jpg"))
+    new BoxPanel(Orientation.Vertical) {
+      preferredSize = new Dimension(col * tam_celda + 40, fil * tam_celda + 40)
+      println(image.getWidth + "  -  " + image.getHeight)
+      background = Color.PINK
+      tablero = tab.inicializarTablero(col * fil)
+      canvas =  new Canvas(tablero, col, fil, modo, dif, tam_celda)
+      contents += canvas
+
+      border = Swing.EmptyBorder(20, 20, 20, 20)
+    }
+  }
+
+
+  //------------------------------------------------------------------------------------
+  //Ventana Game Over
+  val imagenFin: BufferedImage = ImageIO.read(new File("src/resources/end.jpg"))
+  val startGameButton = new Button() {
+    font = new Font("Arial", java.awt.Font.BOLD, size_font)
+    action = Action("Play Again") {
+      obtenerDatos()
+    }
+  }
+  val ventana4 = new BoxPanel(Orientation.Vertical) {
+    preferredSize = new Dimension(image.getWidth, image.getHeight)
+
+    override def paintComponent(g: Graphics2D): Unit = {
+      super.paintComponent(g)
+      g.drawImage(imagenFin, 0, 0, null)
+    }
+
+    contents += new BoxPanel(Orientation.Horizontal) {
+      contents += Swing.HGlue
+      contents += new Label("GAME OVER") {
+        foreground = Color.WHITE
+        font = new Font("Arial", java.awt.Font.BOLD, 40)
+      }
+      contents += Swing.HGlue
+      border = Swing.EmptyBorder(150, 10, 10, 10)
+      background = new Color(0, 0, 0, 0)
+    }
+    contents += Swing.VStrut(100)
+    contents += new BoxPanel(Orientation.Horizontal) {
+      contents += Swing.HGlue
+      contents += startGameButton
+      contents += Swing.HGlue
+      background = new Color(0, 0, 0, 0)
+    }
+  }
+  //---------------------------------------------------------------------------------------
+
+  contents = ventana1
+
+  def obtenerDatos(): Unit = {
+    contents = ventana2
+  }
+
+  def comenzarJuego(): Unit = {
+    col = colField.text.toInt
+    fil = filField.text.toInt
+    modo = if (modeComboBox.item == "Automatico") 'a' else 'm'
+    dif = if (difficultyComboBox.item == "Facil") 4 else 6
+    println(col + " " + fil + " " + modo + " " + dif)
+    contents = crearPantallaGame(col, fil, modo, dif)
+  }
+
+  def updateTablero(): Unit = {
+    println("VAMOSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS")
+    tablero = tab.generarFichas(tab.bajarFichas(tablero, col, col * fil - 1), dif, col)
+    canvas.repaint()
   }
 
   listenTo(canvas)
   reactions += {
-    case TicTacToeEvent(x, y) =>
-      board.play(x, y)
-      updateLabelAndBoard()
+    case SalirEvent() =>
+      println("VAMOSSSSSSSS")
+      tablero = tab.generarFichas(tab.bajarFichas(tablero, col, col * fil - 1), dif, col)
+      updateTablero()
+
   }
 
-  def updateLabelAndBoard() {
-    turnLabel.text = "Player %d's turn".format(board.currentPlayer)
-    canvas.repaint()
-  }
-
-  def newGame() {
-    board.restart()
-    updateLabelAndBoard()
-  }
 }
 
-object TicTacToeThree {
-  def main(args: Array[String]) {
-    val board = new Board
-    val ui = new UI(board)
+object CundyCroshSoga {
+  def main(args: Array[String]): Unit = {
+    val ui = new UI()
+    ui.centerOnScreen()
     ui.visible = true
+    ui.resizable = false
   }
 }
