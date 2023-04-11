@@ -4,6 +4,17 @@ import scala.swing.Graphics2D
 class Tablero() {
   private val rand = new scala.util.Random(System.currentTimeMillis())
 
+  def eliminarMasFichas(tablero: List[Int], masEliminadas: Int, mejorPos: Int, pos: Int, col: Int, dif: Int): Int = {
+    pos match {
+      case -1 => mejorPos
+      case _ =>
+        val (tabAux, _) = realizarMovimiento(tablero, pos % col, (pos - (pos % col)) / col, col, dif)
+        val eliminadas = contarFichasEliminadas(tabAux)
+        if (eliminadas > masEliminadas) eliminarMasFichas(tablero, eliminadas, pos, pos - 1, col, dif)
+        else eliminarMasFichas(tablero, masEliminadas, mejorPos, pos - 1, col, dif)
+    }
+  }
+
   def inicializarTablero(celdas:Int): List[Int] = {
      celdas match {
        case 0 => Nil

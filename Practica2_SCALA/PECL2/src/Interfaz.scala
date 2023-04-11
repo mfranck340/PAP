@@ -47,8 +47,7 @@ class Canvas(tabIn:List[Int], col:Int, fil:Int, mod:Char, dif:Int, tam:Int) exte
     case MouseClicked(_, p, _, _, _) =>
       val fila = p.y / altoCelda
       val columna = p.x / anchoCelda
-      if (fila < filas && columna < columnas && !tab.comprobarTablero(tablero)) {
-        println(s"Fila: $fila, Columna: $columna")
+      if (fila < filas && columna < columnas && !tab.comprobarTablero(tablero) && modo == 'm') {
         tocar(columna, fila)
       }
   }
@@ -68,9 +67,15 @@ class Canvas(tabIn:List[Int], col:Int, fil:Int, mod:Char, dif:Int, tam:Int) exte
     }
 
     if (tab.comprobarTablero(tablero)) {
-      tablero = tab.generarFichas(tab.bajarFichas(tablero, col, col * fil - 1), dif, col)
-      Thread.sleep(200)
+      tablero = tab.generarFichas(tab.bajarFichas(tablero, columnas, columnas * filas - 1), dificultad, columnas)
+      Thread.sleep(300)
       this.repaint()
+    }
+    else if (modo == 'a') {
+      val pos = tab.eliminarMasFichas(tablero, 0, 0, filas * columnas - 1, columnas, dificultad)
+      val columna = pos % columnas
+      val fila = (pos - columna) / columnas
+      tocar(columna, fila)
     }
   }
 
@@ -79,7 +84,7 @@ class Canvas(tabIn:List[Int], col:Int, fil:Int, mod:Char, dif:Int, tam:Int) exte
     if (borrar)
       vidas -= 1
     tablero = tabAux
-    Thread.sleep(150)
+    Thread.sleep(300)
     this.repaint()
   }
 
