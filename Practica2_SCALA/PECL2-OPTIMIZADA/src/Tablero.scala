@@ -257,10 +257,33 @@ class Tablero() {
     }
   }
 
+  def ejecutarMovimiento(tablero: List[Int], pos:Int, col: Int): Int = {
+    val elem = getElem(pos, tablero)
+    elem match {
+      case _ if elem < 7 =>
+        contarFichasEliminadas(eliminarFichas(tablero, elem, lengthCustom(tablero) - 1, pos, col))
+      case 8 =>
+        contarFichasEliminadas(activarBomba(tablero, pos, col, rand.nextInt(2)))
+      case 9 =>
+        contarFichasEliminadas(activarTnt(tablero, pos, col))
+      case _ =>
+        contarFichasEliminadas(insertar(0, pos, activarRompe(tablero, elem % 10)))
+    }
+  }
+
+  def buscarMejorMovimiento(tablero:List[Int], pos:Int, mPos:Int, mValor:Int): Int = {
+    tablero match {
+      case Nil => mPos
+      case _ =>
+        if (tablero.head > mValor) buscarMejorMovimiento(tablero.tail, pos + 1, pos, tablero.head)
+        else buscarMejorMovimiento(tablero.tail, pos + 1, mPos, mValor)
+    }
+  }
+
   @tailrec
   private def actualizarTableroAux(tablero:List[Int], col:Int, dif:Int, continuar:Boolean): List[Int] = {
     if (continuar) {
-      mostrarTablero(tablero, col)
+      //mostrarTablero(tablero, col)
       val tabAux = generarFichas(bajarFichas(tablero, col, lengthCustom(tablero) - 1), dif, col)
       actualizarTableroAux(tabAux, col, dif, comprobarTablero(tabAux))
     } else {
