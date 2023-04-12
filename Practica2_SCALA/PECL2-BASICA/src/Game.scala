@@ -26,35 +26,40 @@ class Game {
 
     println("- START GAME :) - ")
 
-    runAux(col, fil, tab.actualizarTablero(tablero, col, dif), dif, mod, vidas)
+    runAux(col, fil, tab.actualizarTablero(tablero, col, dif), dif, mod, vidas)         //Iniciamos el juego
 
     println("\n- GAME OVER :( -\n")
   }
 
+  //Función donde se ejecutará el juego
   @tailrec
-  private def runAux(col:Int, fil:Int, tablero:List[Int], dif:Int, mod:Char, vidas:Int): Unit = {
-    tab.mostrarTablero(tablero, col)
-    println(s"\nVIDAS: $vidas")
+  private def runAux(col: Int, fil: Int, tablero: List[Int], dif: Int, mod: Char, vidas: Int): Unit = {
+    tab.mostrarTablero(tablero, col)                                                    //Mostramos el tablero
+    println(s"\nVIDAS: $vidas")                                                         //Mostramos las vidas
     vidas match {
-      case 0 =>
-      case _ =>
-        mod match {
-          case 'a' =>
-            val x = rand.nextInt(col)
-            val y = rand.nextInt(fil)
-            println(s"\nCoordenadas ($x, $y)")
-            val (tabAux, restar) = tab.interactuarConTablero(tablero, x, y, col, dif)             //No se donde colocar esto para que no este duplicado
-            runAux(col, fil, tabAux, dif, mod, if (restar) vidas - 1 else vidas)
-
-          case 'm' =>
-            print(s"\nIntroduce la columna (0 - ${col - 1}): ")
-            val x = scala.io.StdIn.readInt()
-            print(s"Introduce la fila (0 - ${fil - 1}): ")
-            val y = scala.io.StdIn.readInt()
-            println(s"Coordenadas ($x, $y)")
-            val (tabAux, restar) = tab.interactuarConTablero(tablero, x, y, col, dif)
-            runAux(col, fil, tabAux, dif, mod, if (restar) vidas - 1 else vidas)
-        }
+      case 0 =>                                                                         //Si no nos quedan vidas, salimos de la función
+      case _ =>                                                                         //Si quedan vidas, continuamos la recursividad
+        val (x, y) = if (mod == 'a') getAutomatico(col, fil) else getManual(col, fil)   //Comprobamos si se ejecutará de forma manual o automática y llamamos a la respectiva función para obtener las coordenadas
+        val (tabAux, restar) = tab.interactuarConTablero(tablero, x, y, col, dif)       //Interactuamos con el tablero utilizando las coordenadas
+        runAux(col, fil, tabAux, dif, mod, if (restar) vidas - 1 else vidas)            //Llamamos recursivamente a la función restando una vida si no se ha eliminado ninguna ficha
     }
+  }
+
+  //Función para obtener las coordenadas del usuario (forma manual)
+  private def getManual(col: Int, fil: Int): (Int, Int) = {
+    print(s"\nIntroduce la columna (0 - ${col - 1}): ")                                 //Solicitamos la coordenada X (columna)
+    val x = scala.io.StdIn.readInt()
+    print(s"Introduce la fila (0 - ${fil - 1}): ")                                      //Solicitamos la coordenada Y (fila)
+    val y = scala.io.StdIn.readInt()
+    println(s"Coordenadas ($x, $y)")                                                    //Mostramos las coordenadas
+    (x, y)                                                                              //Devolvemos una tupla con las coordenadas
+  }
+
+  //Función para obtener las coordenadas aleatoriamente (forma automática)
+  private def getAutomatico(col: Int, fil: Int): (Int, Int) = {
+    val x = rand.nextInt(col)                                                           //Obtenemos la coordenada X (columna) aleatoriamente
+    val y = rand.nextInt(fil)                                                           //Obtenemos la coordenada Y (fila) aleatoriamente
+    println(s"\nCoordenadas ($x, $y)")                                                  //Mostramos las coordenadas
+    (x, y)                                                                              //Devolvemos una tupla con las coordenadas
   }
 }

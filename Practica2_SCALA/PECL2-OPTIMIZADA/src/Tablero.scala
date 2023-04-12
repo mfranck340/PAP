@@ -10,10 +10,6 @@ class Tablero() {
     }
   }
 
-  def mostrarTablero(tablero: List[Int], n: Int): Unit = {        // esto se puede quitar y dejar solo la aux
-    mostrarTableroAux(tablero, n)
-  }
-
   def actualizarTablero(tablero: List[Int], col: Int, dif: Int): List[Int] = {
     actualizarTableroAux(tablero, col, dif, comprobarTablero(tablero))
   }
@@ -163,31 +159,21 @@ class Tablero() {
     }
   }
 
-  /*private def concatenarListas(x:List[Int], y:List[Int]): List[Int] = {
-    x match {
-      case Nil => y
-      case n :: Nil => n :: y
-      case head :: tail => head::concatenarListas(tail, y)
-    }
-  }*/
-
-  @tailrec
-  private def mostrarTableroAux(x:List[Int], n:Int): Unit = {
+  def mostrarTablero(x:List[Int], n:Int): Unit = {
     x match {
       case Nil =>  print("\n" + "---" * (n - 1) + "----")
       case _ =>
         if (lengthCustom(x) % n == 0) {
           print("\n" + "---" * (n - 1) + "----" + "\n|")
         }
-        if (x.head < 7)                                             //se podria cambiar por un match
-          print(x.head + " |")
-        else if (x.head == 8)
-          print("B |")
-        else if (x.head == 9)
-          print("T |")
-        else
-          print(s"R${x.head % 10}|")
-        mostrarTableroAux(x.tail, n)
+        x.head match {
+          case 8 => print("B |")
+          case 9 => print("T |")
+          case _ =>
+            if (x.head < 7) print(x.head + " |")
+            else print(s"R${x.head % 10}|")
+        }
+        mostrarTablero(x.tail, n)
     }
   }
 
@@ -197,13 +183,6 @@ class Tablero() {
       case _ => 1 + lengthCustom(x.tail)
     }
   }
-
-  /*private def reverseCustom(x: List[Int]): List[Int] = {
-    x match {
-      case Nil => Nil
-      case _ => concatenarListas(reverseCustom(x.tail), x.head :: Nil)
-    }
-  }*/
 
   private def generarFichas(tablero:List[Int], dif:Int, col:Int): List[Int] = {
     col match {

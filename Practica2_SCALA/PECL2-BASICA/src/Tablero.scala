@@ -3,40 +3,53 @@ import scala.annotation.tailrec
 class Tablero() {
   private val rand = new scala.util.Random(System.currentTimeMillis())
 
+  //Función para crear un tablero (lista con tantas posiciones como indique celdas) con todas las fichas de aire
   def inicializarTablero(celdas:Int): List[Int] = {
     celdas match {
-      case 0 => Nil
-      case _ => 0 :: inicializarTablero(celdas - 1)
+      case 0 => Nil                                                                       //En el caso base, devolvemos la lista vacía
+      case _ => 0 :: inicializarTablero(celdas - 1)                                       //Realizamos la recursividad concatenando un 0 al inicio
     }
   }
 
-  def mostrarTablero(tablero: List[Int], n: Int): Unit = {        // esto se puede quitar y dejar solo la aux
-    mostrarTableroAux(tablero, n)
-  }
-
+  //Función para actualizar el tablero si se han eliminado fichas
   def actualizarTablero(tablero: List[Int], col: Int, dif: Int): List[Int] = {
-    actualizarTableroAux(tablero, col, dif, comprobarTablero(tablero))
+    actualizarTableroAux(tablero, col, dif, comprobarTablero(tablero))                    //Llamamos a actualizarTableroAux() comprobando si se han eliminado fichas
   }
 
-  def interactuarConTablero(tablero:List[Int], cordX:Int, cordY:Int, col:Int, dif:Int): (List[Int], Boolean) = {
-    val (tabAux, vidas) = realizarMovimiento(tablero, cordX, cordY, col, dif)
-    (actualizarTablero(tabAux, col, dif), vidas)
-  }
-
-  private def realizarMovimiento(tablero:List[Int], cordX:Int, cordY:Int, col:Int, dif:Int): (List[Int], Boolean) = {       //se podria crear una variable para posicion 'cordY * col + cordX'
-    val elem = getElem(cordY * col + cordX, tablero)
-    elem match {
-      case _ if elem < 7 =>
-        sustituirFicha(eliminarFichas(tablero, elem, lengthCustom(tablero) - 1, cordY * col + cordX, col), cordY * col + cordX, elem, dif)
-      case 8 =>
-        (activarBomba(tablero, cordY * col + cordX, col, rand.nextInt(2)), false)
-      case 9 =>
-        (activarTnt(tablero, cordY * col + cordX, col), false)                  //Se puede enviar las coordenadas en vez de la posicion
-      case _ =>
-        (insertar(0, cordY * col + cordX, activarRompe(tablero, elem % 10)), false)       //se podria hacer todo dentro de activar rompe
+  //Función recursiva para actualizar el tablero si se han eliminado fichas
+  @tailrec
+  private def actualizarTableroAux(tablero: List[Int], col: Int, dif: Int, continuar: Boolean): List[Int] = {
+    if (continuar) {                                                                      //Si hay bloques de aire, bajamos las fichas y generamos nuevas en lo alto
+      mostrarTablero(tablero, col)                                                        //Mostramos el tablero
+      val tabAux = generarFichas(bajarFichas(tablero, col, lengthCustom(tablero) - 1), dif, col)
+      actualizarTableroAux(tabAux, col, dif, comprobarTablero(tabAux))                    //Hacemos recursividad comprobando si quedan bloques de aire en el nuevo tablero
+    } else {
+      tablero                                                                             //Si no hay bloques de aire, devolvemos el mismo tablero
     }
   }
 
+  //Función que realiza cambios en el tablero dependiendo de las coordenadas introducidas
+  def interactuarConTablero(tablero:List[Int], cordX:Int, cordY:Int, col:Int, dif:Int): (List[Int], Boolean) = {
+    val (tabAux, vidas) = realizarMovimiento(tablero, cordX, cordY, col, dif)             //Realizamos el movimiento con las coordenadas
+    (actualizarTablero(tabAux, col, dif), vidas)                                          //Devolvemos el tablero actualizado junto con las vidas que tiene el usuario tras realizar el movimiento
+  }
+
+  //Función que realiza el movimiento adecuado dependiendo del elemento que ha sido pulsado
+  private def realizarMovimiento(tablero:List[Int], cordX:Int, cordY:Int, col:Int, dif:Int): (List[Int], Boolean) = {
+    val elem = getElem(cordY * col + cordX, tablero)                                      //Obtenemos el elemento que se encuentra en la posición del tablero que se ha pulsado
+    elem match {
+      case _ if elem < 7 =>                                                               //Si el elemento es menor que 7, es una ficha normal
+        sustituirFicha(eliminarFichas(tablero, elem, lengthCustom(tablero) - 1, cordY * col + cordX, col), cordY * col + cordX, elem, dif)
+      case 8 =>                                                                           //Si el elemento es 8, hacemos explotar la bomba
+        (activarBomba(tablero, cordY * col + cordX, col, rand.nextInt(2)), false)
+      case 9 =>                                                                           //Si el elemento es 9, hacemos estallar la TNT
+        (activarTnt(tablero, cordY * col + cordX, col), false)
+      case _ =>                                                                           //En cualquier otro caso, activamos el rompecabezas
+        (insertar(0, cordY * col + cordX, activarRompe(tablero, elem % 10)), false)
+    }
+  }
+
+  //Función para activar el rompecabezas
   private def activarRompe(tablero:List[Int], elem:Int): List[Int] = {
     activarRompeAux(tablero, elem, lengthCustom(tablero) - 1)
   }
@@ -163,31 +176,21 @@ class Tablero() {
     }
   }
 
-  /*private def concatenarListas(x:List[Int], y:List[Int]): List[Int] = {
-    x match {
-      case Nil => y
-      case n :: Nil => n :: y
-      case head :: tail => head::concatenarListas(tail, y)
-    }
-  }*/
-
-  @tailrec
-  private def mostrarTableroAux(x:List[Int], n:Int): Unit = {
+  def mostrarTablero(x:List[Int], n:Int): Unit = {
     x match {
       case Nil =>  print("\n" + "---" * (n - 1) + "----")
       case _ =>
         if (lengthCustom(x) % n == 0) {
           print("\n" + "---" * (n - 1) + "----" + "\n|")
         }
-        if (x.head < 7)                                             //se podria cambiar por un match
-          print(x.head + " |")
-        else if (x.head == 8)
-          print("B |")
-        else if (x.head == 9)
-          print("T |")
-        else
-          print(s"R${x.head % 10}|")
-        mostrarTableroAux(x.tail, n)
+        x.head match {
+          case 8 => print("B |")
+          case 9 => print("T |")
+          case _ =>
+            if (x.head < 7) print(x.head + " |")
+            else print(s"R${x.head % 10}|")
+        }
+        mostrarTablero(x.tail, n)
     }
   }
 
@@ -197,13 +200,6 @@ class Tablero() {
       case _ => 1 + lengthCustom(x.tail)
     }
   }
-
-  /*private def reverseCustom(x: List[Int]): List[Int] = {
-    x match {
-      case Nil => Nil
-      case _ => concatenarListas(reverseCustom(x.tail), x.head :: Nil)
-    }
-  }*/
 
   private def generarFichas(tablero:List[Int], dif:Int, col:Int): List[Int] = {
     col match {
@@ -266,16 +262,4 @@ class Tablero() {
         else contarFichasEliminadas(tablero.tail)
     }
   }
-
-  @tailrec
-  private def actualizarTableroAux(tablero:List[Int], col:Int, dif:Int, continuar:Boolean): List[Int] = {
-    if (continuar) {
-      mostrarTablero(tablero, col)
-      val tabAux = generarFichas(bajarFichas(tablero, col, lengthCustom(tablero) - 1), dif, col)
-      actualizarTableroAux(tabAux, col, dif, comprobarTablero(tabAux))
-    } else {
-      tablero
-    }
-  }
-
 }
