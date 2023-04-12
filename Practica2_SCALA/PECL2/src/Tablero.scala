@@ -1,5 +1,4 @@
 import scala.annotation.tailrec
-import scala.swing.Graphics2D
 
 class Tablero() {
   private val rand = new scala.util.Random(System.currentTimeMillis())
@@ -22,11 +21,11 @@ class Tablero() {
      }
   }
 
-  def mostrarTablero(tablero: List[Int], n: Int): Unit = {        // esto se puede quitar y dejar solo la aux
+  private def mostrarTablero(tablero: List[Int], n: Int): Unit = {        // esto se puede quitar y dejar solo la aux
     mostrarTableroAux(tablero, n)
   }
 
-  def actualizarTablero(tablero: List[Int], col: Int, dif: Int): List[Int] = {
+  private def actualizarTablero(tablero: List[Int], col: Int, dif: Int): List[Int] = {
     actualizarTableroAux(tablero, col, dif, comprobarTablero(tablero))
   }
 
