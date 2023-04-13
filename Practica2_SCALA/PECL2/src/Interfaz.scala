@@ -65,7 +65,7 @@ class Canvas(tabIn:List[Int], col:Int, fil:Int, mod:Char, dif:Int, tam:Int) exte
 
     if (tab.comprobarTablero(tablero)) {
       tablero = tab.generarFichas(tab.bajarFichas(tablero, columnas, columnas * filas - 1), dificultad, columnas)
-      Thread.sleep(300)
+      //Thread.sleep(300)
       this.repaint()
     }
     else if (modo == 'a') {
@@ -250,8 +250,10 @@ class UI() extends MainFrame {
         case SalirEvent() =>
           vidas -= 1
           labelVidas.text = "Vidas: " + vidas
-          if (vidas == 0)
+          if (vidas == 0) {
+            vidas = 5
             finJuego()
+          }
       }
       border = Swing.EmptyBorder(20, 20, 20, 20)
     }

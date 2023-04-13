@@ -3,29 +3,14 @@ import scala.annotation.tailrec
 class Tablero() {
   private val rand = new scala.util.Random(System.currentTimeMillis())
 
-  def eliminarMasFichas(tablero: List[Int], masEliminadas: Int, mejorPos: Int, pos: Int, col: Int, dif: Int): Int = {
-    pos match {
-      case -1 => mejorPos
-      case _ =>
-        val (tabAux, _) = realizarMovimiento(tablero, pos % col, (pos - (pos % col)) / col, col, dif)
-        val eliminadas = contarFichasEliminadas(tabAux)
-        if (eliminadas > masEliminadas) eliminarMasFichas(tablero, eliminadas, pos, pos - 1, col, dif)
-        else eliminarMasFichas(tablero, masEliminadas, mejorPos, pos - 1, col, dif)
+  def inicializarTablero(celdas:Int): List[Int] = {
+    celdas match {
+      case 0 => Nil
+      case _ => 0 :: inicializarTablero(celdas - 1)
     }
   }
 
-  def inicializarTablero(celdas:Int): List[Int] = {
-     celdas match {
-       case 0 => Nil
-       case _ => 0 :: inicializarTablero(celdas - 1)
-     }
-  }
-
-  private def mostrarTablero(tablero: List[Int], n: Int): Unit = {        // esto se puede quitar y dejar solo la aux
-    mostrarTableroAux(tablero, n)
-  }
-
-  private def actualizarTablero(tablero: List[Int], col: Int, dif: Int): List[Int] = {
+  def actualizarTablero(tablero: List[Int], col: Int, dif: Int): List[Int] = {
     actualizarTableroAux(tablero, col, dif, comprobarTablero(tablero))
   }
 
@@ -38,7 +23,8 @@ class Tablero() {
     val elem = getElem(cordY * col + cordX, tablero)
     elem match {
       case _ if elem < 7 =>
-        sustituirFicha(eliminarFichas(tablero, elem, lengthCustom(tablero) - 1, cordY * col + cordX, col), cordY * col + cordX, elem, dif)
+        //sustituirFicha(eliminarFichas(tablero, elem, lengthCustom(tablero) - 1, cordY * col + cordX, col), cordY * col + cordX, elem, dif)
+        sustituirFicha(eliminarFichas2(tablero, cordY * col + cordX, col, lengthCustom(tablero) / col, elem), cordY * col + cordX, elem, dif)
       case 8 =>
         (activarBomba(tablero, cordY * col + cordX, col, rand.nextInt(2)), false)
       case 9 =>
@@ -46,6 +32,36 @@ class Tablero() {
       case _ =>
         (insertar(0, cordY * col + cordX, activarRompe(tablero, elem % 10)), false)       //se podria hacer todo dentro de activar rompe
     }
+  }
+  private def eliminarFichas2(tablero:List[Int], posIni:Int, col:Int, fil:Int, elem:Int): List[Int] = {
+    def marcarCasilla(): List[Int] = {
+      insertar(0, posIni, tablero)
+    }
+
+    def moverDerecha(): List[Int] = {
+      if ((posIni + 1) % col != 0 && getElem(posIni + 1, tablero) == elem)
+        eliminarFichas2(marcarCasilla(), posIni + 1, col, fil, elem)
+      else
+        marcarCasilla()
+    }
+
+    def moverIzquierda(): List[Int] = {
+      if (posIni % col != 0 && getElem(posIni - 1, tablero) == elem)
+        eliminarFichas2(moverDerecha(), posIni - 1, col, fil, elem)
+      else moverDerecha()
+    }
+
+    def moverArriba(): List[Int] = {
+      if (posIni >= col && getElem(posIni - col, tablero) == elem)
+        eliminarFichas2(moverIzquierda(), posIni - col, col, fil, elem)
+      else
+        moverIzquierda()
+    }
+
+    if (posIni < col * (fil - 1) && getElem(posIni + col, tablero) == elem)
+      eliminarFichas2(moverArriba(), posIni + col, col, fil, elem)
+    else
+      moverArriba()
   }
 
   private def activarRompe(tablero:List[Int], elem:Int): List[Int] = {
@@ -174,23 +190,21 @@ class Tablero() {
     }
   }
 
-  @tailrec
-  private def mostrarTableroAux(x:List[Int], n:Int): Unit = {
+  def mostrarTablero(x:List[Int], n:Int): Unit = {
     x match {
       case Nil =>  print("\n" + "---" * (n - 1) + "----")
       case _ =>
         if (lengthCustom(x) % n == 0) {
           print("\n" + "---" * (n - 1) + "----" + "\n|")
         }
-        if (x.head < 7)                                             //se podria cambiar por un match
-          print(x.head + " |")
-        else if (x.head == 8)
-          print("B |")
-        else if (x.head == 9)
-          print("T |")
-        else
-            print(s"R${x.head % 10}|")
-        mostrarTableroAux(x.tail, n)
+        x.head match {
+          case 8 => print("B |")
+          case 9 => print("T |")
+          case _ =>
+            if (x.head < 7) print(x.head + " |")
+            else print(s"R${x.head % 10}|")
+        }
+        mostrarTablero(x.tail, n)
     }
   }
 
@@ -236,7 +250,7 @@ class Tablero() {
       tablero
     else {
       if (getElem(pos, tablero) == 0 && pos - col >= 0 && getElem(pos - col, tablero) != 0)
-          bajarFichas(insertar(0, pos - col, insertar(getElem(pos - col, tablero), pos, tablero)), col, pos - 1)
+        bajarFichas(insertar(0, pos - col, insertar(getElem(pos - col, tablero), pos, tablero)), col, pos - 1)
       else
         bajarFichas(tablero, col, pos - 1)
     }
@@ -260,6 +274,40 @@ class Tablero() {
     }
   }
 
+  def eliminarMasFichas(tablero: List[Int], masEliminadas: Int, mejorPos: Int, pos: Int, col: Int, dif: Int): Int = {
+    pos match {
+      case -1 => mejorPos
+      case _ =>
+        val (tabAux, _) = realizarMovimiento(tablero, pos % col, (pos - (pos % col)) / col, col, dif)
+        val eliminadas = contarFichasEliminadas(tabAux)
+        if (eliminadas > masEliminadas) eliminarMasFichas(tablero, eliminadas, pos, pos - 1, col, dif)
+        else eliminarMasFichas(tablero, masEliminadas, mejorPos, pos - 1, col, dif)
+    }
+  }
+
+  def ejecutarMovimiento(tablero: List[Int], pos:Int, col: Int): Int = {
+    val elem = getElem(pos, tablero)
+    elem match {
+      case _ if elem < 7 =>
+        contarFichasEliminadas(eliminarFichas2(tablero, pos, col, lengthCustom(tablero) / col, elem))
+      case 8 =>
+        contarFichasEliminadas(activarBomba(tablero, pos, col, rand.nextInt(2)))
+      case 9 =>
+        contarFichasEliminadas(activarTnt(tablero, pos, col))
+      case _ =>
+        contarFichasEliminadas(insertar(0, pos, activarRompe(tablero, elem % 10)))
+    }
+  }
+
+  def buscarMejorMovimiento(tablero:List[Int], pos:Int, mPos:Int, mValor:Int): Int = {
+    tablero match {
+      case Nil => mPos
+      case _ =>
+        if (tablero.head > mValor) buscarMejorMovimiento(tablero.tail, pos + 1, pos, tablero.head)
+        else buscarMejorMovimiento(tablero.tail, pos + 1, mPos, mValor)
+    }
+  }
+
   @tailrec
   private def actualizarTableroAux(tablero:List[Int], col:Int, dif:Int, continuar:Boolean): List[Int] = {
     if (continuar) {
@@ -270,4 +318,5 @@ class Tablero() {
       tablero
     }
   }
+
 }

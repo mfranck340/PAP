@@ -34,29 +34,34 @@ class Tablero() {
     }
   }
   private def eliminarFichas2(tablero:List[Int], posIni:Int, col:Int, fil:Int, elem:Int): List[Int] = {
-      val tabAux = insertar(0, posIni, tablero)
+    def marcarCasilla(): List[Int] = {
+      insertar(0, posIni, tablero)
+    }
 
-      val tabDer = if ((posIni + 1) % col != 0 && getElem(posIni + 1, tablero) == elem)
-        eliminarFichas2(tabAux, posIni + 1, col, fil, elem)
+    def moverDerecha(): List[Int] = {
+      if ((posIni + 1) % col != 0 && getElem(posIni + 1, tablero) == elem)
+        eliminarFichas2(marcarCasilla(), posIni + 1, col, fil, elem)
       else
-        tabAux
+        marcarCasilla()
+    }
 
-      val tabIzq = if (posIni % col != 0 && getElem(posIni - 1, tablero) == elem)
-        eliminarFichas2(tabDer, posIni - 1, col, fil, elem)
+    def moverIzquierda(): List[Int] = {
+      if (posIni % col != 0 && getElem(posIni - 1, tablero) == elem)
+        eliminarFichas2(moverDerecha(), posIni - 1, col, fil, elem)
+      else moverDerecha()
+    }
+
+    def moverArriba(): List[Int] = {
+      if (posIni >= col && getElem(posIni - col, tablero) == elem)
+        eliminarFichas2(moverIzquierda(), posIni - col, col, fil, elem)
       else
-        tabDer
+        moverIzquierda()
+    }
 
-      val tabArriba = if (posIni >= col && getElem(posIni - col, tablero) == elem)
-        eliminarFichas2(tabIzq, posIni - col, col, fil, elem)
-      else
-        tabIzq
-
-      val tabAbajo = if (posIni < col * (fil - 1) && getElem(posIni + col, tablero) == elem)
-        eliminarFichas2(tabArriba, posIni + col, col, fil, elem)
-      else
-        tabArriba
-
-      tabAbajo
+    if (posIni < col * (fil - 1) && getElem(posIni + col, tablero) == elem)
+      eliminarFichas2(moverArriba(), posIni + col, col, fil, elem)
+    else
+      moverArriba()
   }
 
   private def activarRompe(tablero:List[Int], elem:Int): List[Int] = {
@@ -309,7 +314,7 @@ class Tablero() {
   @tailrec
   private def actualizarTableroAux(tablero:List[Int], col:Int, dif:Int, continuar:Boolean): List[Int] = {
     if (continuar) {
-      //mostrarTablero(tablero, col)
+      mostrarTablero(tablero, col)
       val tabAux = generarFichas(bajarFichas(tablero, col, lengthCustom(tablero) - 1), dif, col)
       actualizarTableroAux(tabAux, col, dif, comprobarTablero(tabAux))
     } else {
