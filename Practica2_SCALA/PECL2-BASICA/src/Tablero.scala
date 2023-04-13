@@ -44,20 +44,21 @@ class Tablero() {
         (activarBomba(tablero, cordY * col + cordX, col, rand.nextInt(2)), false)
       case 9 =>                                                                           //Si el elemento es 9, hacemos estallar la TNT
         (activarTnt(tablero, cordY * col + cordX, col), false)
-      case _ =>                                                                           //En cualquier otro caso, activamos el rompecabezas
+      case _ =>                                                                           //En cualquier otro caso, activamos el rompecabezas e insertamos un bloque de aire en su posición para no generar ningún bloque especial
         (insertar(0, cordY * col + cordX, activarRompe(tablero, elem % 10)), false)
     }
   }
 
   //Función para activar el rompecabezas
   private def activarRompe(tablero:List[Int], elem:Int): List[Int] = {
-    activarRompeAux(tablero, elem, lengthCustom(tablero) - 1)
+    activarRompeAux(tablero, elem, lengthCustom(tablero) - 1)                             //Llamamos a activarRompeAux() con la última posición del tablero
   }
 
+  //Función recursiva para activar el rompecabezas
   @tailrec
   private def activarRompeAux(tablero:List[Int], elem:Int, pos:Int): List[Int] = {
     pos match {
-      case -1 => tablero
+      case -1 => tablero                                                                  //Si hemos recorrido el tablero entero, devolvemos el tablero actual
       case _ =>
         if (getElem(pos, tablero) == elem)
           activarRompeAux(insertar(0, pos, tablero), elem, pos - 1)
