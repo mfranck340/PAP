@@ -4,29 +4,32 @@ object Main {
     val game = new Game()
     game.run()
 
-    /*val myList = List(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
-    // Conexión paralela en la lista
-    val myParallelList = myList.par
-    // Aplicar una operación en paralelo
-    val result = myParallelList.map(x => x * 2)
-    println(result)
+    /*val tablero = List(
+      1, 2, 1, 4, 1, 6, 1, 2, 3, 1,
+      1, 2, 3, 4, 5, 6, 1, 2, 3, 5,
+      1, 2, 1, 4, 1, 6, 1, 2, 3, 1,
+      1, 2, 1, 4, 1, 6, 1, 2, 3, 4,
+      1, 2, 1, 1, 1, 6, 1, 2, 3, 1,
+      1, 2, 1, 1, 1, 2, 1, 2, 3, 4,
+      1, 1, 1, 1, 1, 1, 1, 2, 3, 4,
+      1, 1, 1, 1, 1, 1, 1, 2, 3, 4,
+      1, 1, 1, 1, 1, 1, 1, 2, 3, 4,
+      1, 1, 1, 1, 1, 1, 1, 2, 3, 1)
 
-    def sumaUno(n: Int): Int = {
-      n + 1
-    }
+    val tab = new Tablero
 
-    // Creamos una lista
-    val lista = List(1, 2, 3, 4, 5)
+    val inicio = System.currentTimeMillis()
+    tab.mostrarTablero(tab.eliminarFichas2(tablero, 22, 10, 10, 1), 10)
+    val fin = System.currentTimeMillis()
+    println(s"Tiempo de ejecución: ${fin - inicio} ms")
 
-    // Utilizamos una función anónima dentro del método map
-    val listaTransformada1 = lista.map(n => n * 2)
 
-    // Utilizamos la función definida previamente dentro del método map
-    val listaTransformada2 = lista.map(sumaUno)
+    val inicio2 = System.currentTimeMillis()
+    tab.mostrarTablero(tab.eliminarFichas(tablero, 1, 99, 22, 10), 10)
+    val fin2 = System.currentTimeMillis()
+    println(s"Tiempo de ejecución: ${fin2 - inicio2} ms")*/
 
-    // Imprimimos las listas transformadas
-    println(listaTransformada1) // Imprime: List(2, 4, 6, 8, 10)
-    println(listaTransformada2) // Imprime: List(2, 3, 4, 5, 6)*/
+
 
   }
 }

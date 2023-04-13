@@ -23,7 +23,8 @@ class Tablero() {
     val elem = getElem(cordY * col + cordX, tablero)
     elem match {
       case _ if elem < 7 =>
-        sustituirFicha(eliminarFichas(tablero, elem, lengthCustom(tablero) - 1, cordY * col + cordX, col), cordY * col + cordX, elem, dif)
+        //sustituirFicha(eliminarFichas(tablero, elem, lengthCustom(tablero) - 1, cordY * col + cordX, col), cordY * col + cordX, elem, dif)
+        sustituirFicha(eliminarFichas2(tablero, cordY * col + cordX, col, lengthCustom(tablero) / col, elem), cordY * col + cordX, elem, dif)
       case 8 =>
         (activarBomba(tablero, cordY * col + cordX, col, rand.nextInt(2)), false)
       case 9 =>
@@ -31,6 +32,31 @@ class Tablero() {
       case _ =>
         (insertar(0, cordY * col + cordX, activarRompe(tablero, elem % 10)), false)       //se podria hacer todo dentro de activar rompe
     }
+  }
+  def eliminarFichas2(tablero:List[Int], posIni:Int, col:Int, fil:Int, elem:Int): List[Int] = {
+      val tabAux = insertar(0, posIni, tablero)
+
+      val tabDer = if ((posIni + 1) % col != 0 && getElem(posIni + 1, tablero) == elem)
+        eliminarFichas2(tabAux, posIni + 1, col, fil, elem)
+      else
+        tabAux
+
+      val tabIzq = if (posIni % col != 0 && getElem(posIni - 1, tablero) == elem)
+        eliminarFichas2(tabDer, posIni - 1, col, fil, elem)
+      else
+        tabDer
+
+      val tabArriba = if (posIni >= col && getElem(posIni - col, tablero) == elem)
+        eliminarFichas2(tabIzq, posIni - col, col, fil, elem)
+      else
+        tabIzq
+
+      val tabAbajo = if (posIni < col * (fil - 1) && getElem(posIni + col, tablero) == elem)
+        eliminarFichas2(tabArriba, posIni + col, col, fil, elem)
+      else
+        tabArriba
+
+      tabAbajo
   }
 
   private def activarRompe(tablero:List[Int], elem:Int): List[Int] = {
@@ -102,8 +128,7 @@ class Tablero() {
       (tablero, false)
   }
 
-  @tailrec
-  private def eliminarFichas(tablero:List[Int], elem:Int, pos:Int, posFin:Int, col:Int): List[Int] = {
+ def eliminarFichas(tablero:List[Int], elem:Int, pos:Int, posFin:Int, col:Int): List[Int] = {
     pos match {
       case -1 => tablero
       case _ =>

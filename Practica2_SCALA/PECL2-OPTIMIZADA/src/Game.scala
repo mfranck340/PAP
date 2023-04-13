@@ -40,7 +40,7 @@ class Game {
     vidas match {
       case 0 => //Si no nos quedan vidas, salimos de la función
       case _ => //Si quedan vidas, continuamos la recursividad
-        val (x, y) = if (mod == 'a') getAutomaticoParalelo(tablero, col, fil, dif) else getManual(col, fil) //Comprobamos si se ejecutará de forma manual o automática y llamamos a la respectiva función para obtener las coordenadas
+        val (x, y) = if (mod == 'a') getAutomatico(tablero, col, fil, dif) else getManual(col, fil) //Comprobamos si se ejecutará de forma manual o automática y llamamos a la respectiva función para obtener las coordenadas
         val (tabAux, restar) = tab.interactuarConTablero(tablero, x, y, col, dif) //Interactuamos con el tablero utilizando las coordenadas
         runAux(col, fil, tabAux, dif, mod, if (restar) vidas - 1 else vidas) //Llamamos recursivamente a la función restando una vida si no se ha eliminado ninguna ficha
     }
