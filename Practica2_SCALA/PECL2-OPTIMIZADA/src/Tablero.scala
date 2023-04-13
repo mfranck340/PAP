@@ -33,7 +33,7 @@ class Tablero() {
         (insertar(0, cordY * col + cordX, activarRompe(tablero, elem % 10)), false)       //se podria hacer todo dentro de activar rompe
     }
   }
-  def eliminarFichas2(tablero:List[Int], posIni:Int, col:Int, fil:Int, elem:Int): List[Int] = {
+  private def eliminarFichas2(tablero:List[Int], posIni:Int, col:Int, fil:Int, elem:Int): List[Int] = {
       val tabAux = insertar(0, posIni, tablero)
 
       val tabDer = if ((posIni + 1) % col != 0 && getElem(posIni + 1, tablero) == elem)
@@ -128,7 +128,8 @@ class Tablero() {
       (tablero, false)
   }
 
- def eliminarFichas(tablero:List[Int], elem:Int, pos:Int, posFin:Int, col:Int): List[Int] = {
+ @tailrec
+ private def eliminarFichas(tablero:List[Int], elem:Int, pos:Int, posFin:Int, col:Int): List[Int] = {
     pos match {
       case -1 => tablero
       case _ =>
@@ -286,7 +287,7 @@ class Tablero() {
     val elem = getElem(pos, tablero)
     elem match {
       case _ if elem < 7 =>
-        contarFichasEliminadas(eliminarFichas(tablero, elem, lengthCustom(tablero) - 1, pos, col))
+        contarFichasEliminadas(eliminarFichas2(tablero, pos, col, lengthCustom(tablero) / col, elem))
       case 8 =>
         contarFichasEliminadas(activarBomba(tablero, pos, col, rand.nextInt(2)))
       case 9 =>

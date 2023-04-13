@@ -4,7 +4,6 @@ import scala.annotation.tailrec
 class Game {
 
   private val vidas = 5
-  private val rand = new scala.util.Random(System.currentTimeMillis())
   private val tab = new Tablero
 
   def run(): Unit = {
@@ -34,13 +33,15 @@ class Game {
 
   //Función donde se ejecutará el juego
   //@tailrec
+  @tailrec
   private def runAux(col: Int, fil: Int, tablero: List[Int], dif: Int, mod: Char, vidas: Int): Unit = {
     tab.mostrarTablero(tablero, col) //Mostramos el tablero
     println(s"\nVIDAS: $vidas") //Mostramos las vidas
     vidas match {
       case 0 => //Si no nos quedan vidas, salimos de la función
       case _ => //Si quedan vidas, continuamos la recursividad
-        val (x, y) = if (mod == 'a') getAutomatico(tablero, col, fil, dif) else getManual(col, fil) //Comprobamos si se ejecutará de forma manual o automática y llamamos a la respectiva función para obtener las coordenadas
+        //val (x, y) = if (mod == 'a') getAutomatico(tablero, col, fil, dif) else getManual(col, fil)
+        val (x, y) = if (mod == 'a') getAutomaticoParalelo(tablero, col, fil) else getManual(col, fil) //Comprobamos si se ejecutará de forma manual o automática y llamamos a la respectiva función para obtener las coordenadas
         val (tabAux, restar) = tab.interactuarConTablero(tablero, x, y, col, dif) //Interactuamos con el tablero utilizando las coordenadas
         runAux(col, fil, tabAux, dif, mod, if (restar) vidas - 1 else vidas) //Llamamos recursivamente a la función restando una vida si no se ha eliminado ninguna ficha
     }
@@ -65,7 +66,7 @@ class Game {
     (x, y) //Devolvemos una tupla con las coordenadas
   }
 
-  private def getAutomaticoParalelo(tablero: List[Int], col: Int, fil: Int, dif: Int): (Int, Int) = {
+  private def getAutomaticoParalelo(tablero: List[Int], col: Int, fil: Int): (Int, Int) = {
     val tabAux = crearTableroDePosiciones(fil * col - 1, 0).par
     val contadores = tabAux.map(x => tab.ejecutarMovimiento(tablero, x, col)).toList
     val pos = tab.buscarMejorMovimiento(contadores, 0, 0, 0)
