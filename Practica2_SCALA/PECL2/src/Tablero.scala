@@ -10,7 +10,7 @@ class Tablero() {
     }
   }
 
-  def actualizarTablero(tablero: List[Int], col: Int, dif: Int): List[Int] = {
+  private def actualizarTablero(tablero: List[Int], col: Int, dif: Int): List[Int] = {
     actualizarTableroAux(tablero, col, dif, comprobarTablero(tablero))
   }
 
@@ -190,7 +190,8 @@ class Tablero() {
     }
   }
 
-  def mostrarTablero(x:List[Int], n:Int): Unit = {
+  @tailrec
+  private def mostrarTablero(x:List[Int], n:Int): Unit = {
     x match {
       case Nil =>  print("\n" + "---" * (n - 1) + "----")
       case _ =>
@@ -299,7 +300,8 @@ class Tablero() {
     }
   }
 
-  def buscarMejorMovimiento(tablero:List[Int], pos:Int, mPos:Int, mValor:Int): Int = {
+  @tailrec
+  private def buscarMejorMovimiento(tablero:List[Int], pos:Int, mPos:Int, mValor:Int): Int = {
     tablero match {
       case Nil => mPos
       case _ =>
