@@ -23,8 +23,7 @@ class Tablero() {
     val elem = getElem(cordY * col + cordX, tablero)
     elem match {
       case _ if elem < 7 =>
-        //sustituirFicha(eliminarFichas(tablero, elem, lengthCustom(tablero) - 1, cordY * col + cordX, col), cordY * col + cordX, elem, dif)
-        sustituirFicha(eliminarFichas2(tablero, cordY * col + cordX, col, lengthCustom(tablero) / col, elem), cordY * col + cordX, elem, dif)
+        sustituirFicha(eliminarFichas(tablero, cordY * col + cordX, col, lengthCustom(tablero) / col, elem), cordY * col + cordX, elem, dif)
       case 8 =>
         (activarBomba(tablero, cordY * col + cordX, col, rand.nextInt(2)), false)
       case 9 =>
@@ -33,33 +32,33 @@ class Tablero() {
         (insertar(0, cordY * col + cordX, activarRompe(tablero, elem % 10)), false)       //se podria hacer todo dentro de activar rompe
     }
   }
-  private def eliminarFichas2(tablero:List[Int], posIni:Int, col:Int, fil:Int, elem:Int): List[Int] = {
+  private def eliminarFichas(tablero:List[Int], posIni:Int, col:Int, fil:Int, elem:Int): List[Int] = {
     def marcarCasilla(): List[Int] = {
       insertar(0, posIni, tablero)
     }
 
     def moverDerecha(): List[Int] = {
       if ((posIni + 1) % col != 0 && getElem(posIni + 1, tablero) == elem)
-        eliminarFichas2(marcarCasilla(), posIni + 1, col, fil, elem)
+        eliminarFichas(marcarCasilla(), posIni + 1, col, fil, elem)
       else
         marcarCasilla()
     }
 
     def moverIzquierda(): List[Int] = {
       if (posIni % col != 0 && getElem(posIni - 1, tablero) == elem)
-        eliminarFichas2(moverDerecha(), posIni - 1, col, fil, elem)
+        eliminarFichas(moverDerecha(), posIni - 1, col, fil, elem)
       else moverDerecha()
     }
 
     def moverArriba(): List[Int] = {
       if (posIni >= col && getElem(posIni - col, tablero) == elem)
-        eliminarFichas2(moverIzquierda(), posIni - col, col, fil, elem)
+        eliminarFichas(moverIzquierda(), posIni - col, col, fil, elem)
       else
         moverIzquierda()
     }
 
     if (posIni < col * (fil - 1) && getElem(posIni + col, tablero) == elem)
-      eliminarFichas2(moverArriba(), posIni + col, col, fil, elem)
+      eliminarFichas(moverArriba(), posIni + col, col, fil, elem)
     else
       moverArriba()
   }
@@ -131,63 +130,6 @@ class Tablero() {
       (insertar(10 + rand.between(1, dif + 1), pos, tablero), false)
     else
       (tablero, false)
-  }
-
- @tailrec
- private def eliminarFichas(tablero:List[Int], elem:Int, pos:Int, posFin:Int, col:Int): List[Int] = {
-    pos match {
-      case -1 => tablero
-      case _ =>
-        if (getElem(pos, tablero) == elem && buscarCamino(tablero, pos, posFin, col, lengthCustom(tablero) / col, elem))
-          eliminarFichas(insertar(0, pos, tablero), elem, pos - 1, posFin, col)
-
-        else
-          eliminarFichas(tablero, elem, pos - 1, posFin, col)
-    }
-  }
-
-  private def buscarCamino(tablero: List[Int], posIni: Int, posFin: Int, col: Int, fil: Int, elem: Int): Boolean = {
-    if (posIni == posFin) true
-
-    else {
-      val tabAux = insertar(-1, posIni, tablero)
-      if ((posIni + 1) % col != 0) {
-        if (getElem(posIni + 1, tablero) == elem) {
-          if (buscarCamino(tabAux, posIni + 1, posFin, col, fil, elem)) return true
-        }
-        else if (getElem(posIni + 1, tablero) == 0) {
-          return true
-        }
-      }
-
-      if (posIni % col != 0) {
-        if (getElem(posIni - 1, tablero) == elem) {
-          if (buscarCamino(tabAux, posIni - 1, posFin, col, fil, elem)) return true
-        }
-        else if (getElem(posIni - 1, tablero) == 0) {
-          return true
-        }
-      }
-
-      if (posIni >= col) {
-        if (getElem(posIni - col, tablero) == elem) {
-          if (buscarCamino(tabAux, posIni - col, posFin, col, fil, elem)) return true
-        }
-        else if (getElem(posIni - col, tablero) == 0) {
-          return true
-        }
-      }
-
-      if (posIni < col * (fil - 1))
-        if (getElem(posIni + col, tablero) == elem) {
-          if (buscarCamino(tabAux, posIni + col, posFin, col, fil, elem)) return true
-        }
-        else if (getElem(posIni + col, tablero) == 0) {
-          return true
-        }
-
-      false
-    }
   }
 
   def mostrarTablero(x:List[Int], n:Int): Unit = {
@@ -292,7 +234,7 @@ class Tablero() {
     val elem = getElem(pos, tablero)
     elem match {
       case _ if elem < 7 =>
-        contarFichasEliminadas(eliminarFichas2(tablero, pos, col, lengthCustom(tablero) / col, elem))
+        contarFichasEliminadas(eliminarFichas(tablero, pos, col, lengthCustom(tablero) / col, elem))
       case 8 =>
         contarFichasEliminadas(activarBomba(tablero, pos, col, rand.nextInt(2)))
       case 9 =>
