@@ -124,7 +124,7 @@ class Tablero() {
     }
   }
 
-  //Función que elimina
+  //Función recursiva que elimina las fichas comprobando si las fichas contiguas son iguales a la que se ha tocado
   private def eliminarFichas(tablero: List[Int], posIni: Int, col: Int, fil: Int, elem: Int): List[Int] = {
     //Función que llamamos para eliminar el elemento de la posición actual una vez que hemos comprobado todas las direcciones
     def marcarCasilla(): List[Int] = {
