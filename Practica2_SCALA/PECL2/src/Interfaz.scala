@@ -17,21 +17,21 @@ class Canvas(tabIn:List[Int], col:Int, fil:Int, mod:Char, dif:Int, tam:Int) exte
   private val modo = mod
   private var tablero = tabIn
 
-  private val i0 = ImageIO.read(new File("src/resources/bubble.png"))
-  private val i1 = ImageIO.read(new File("src/resources/patito_red.png"))
-  private val i2 = ImageIO.read(new File("src/resources/patito_blue.png"))
-  private val i3 = ImageIO.read(new File("src/resources/patito_green.png"))
-  private val i4 = ImageIO.read(new File("src/resources/patito_yellow.png"))
-  private val i5 = ImageIO.read(new File("src/resources/patito_pink.png"))
-  private val i6 = ImageIO.read(new File("src/resources/patito_white.png"))
-  private val i7 = ImageIO.read(new File("src/resources/bomba.png"))
-  private val i8 = ImageIO.read(new File("src/resources/tnt.png"))
-  private val i9 = ImageIO.read(new File("src/resources/rompe_red.png"))
-  private val i10 = ImageIO.read(new File("src/resources/rompe_blue.png"))
-  private val i11 = ImageIO.read(new File("src/resources/rompe_green.png"))
-  private val i12 = ImageIO.read(new File("src/resources/rompe_yellow.png"))
-  private val i13 = ImageIO.read(new File("src/resources/rompe_pink.png"))
-  private val i14 = ImageIO.read(new File("src/resources/rompe_white.png"))
+  private val imagenes = List(ImageIO.read(new File("src/resources/bubble.png")),
+    ImageIO.read(new File("src/resources/patito_red.png")),
+    ImageIO.read(new File("src/resources/patito_blue.png")),
+    ImageIO.read(new File("src/resources/patito_green.png")),
+    ImageIO.read(new File("src/resources/patito_yellow.png")),
+    ImageIO.read(new File("src/resources/patito_pink.png")),
+    ImageIO.read(new File("src/resources/patito_white.png")),
+    ImageIO.read(new File("src/resources/bomba.png")),
+    ImageIO.read(new File("src/resources/tnt.png")),
+    ImageIO.read(new File("src/resources/rompe_red.png")),
+    ImageIO.read(new File("src/resources/rompe_blue.png")),
+    ImageIO.read(new File("src/resources/rompe_green.png")),
+    ImageIO.read(new File("src/resources/rompe_yellow.png")),
+    ImageIO.read(new File("src/resources/rompe_pink.png")),
+    ImageIO.read(new File("src/resources/rompe_white.png")) )
 
   private val anchoCelda = tam
   private val altoCelda = tam
@@ -52,21 +52,23 @@ class Canvas(tabIn:List[Int], col:Int, fil:Int, mod:Char, dif:Int, tam:Int) exte
   override def paintComponent(g: Graphics2D): Unit = {
     super.paintComponent(g)
     g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
-    // Dibuja las celdas
-    for {
-      fila <- 0 until filas
-      columna <- 0 until columnas
-    } {
-      val x = columna * anchoCelda
-      val y = fila * altoCelda
-      val image = asignarImagen(fila * columnas + columna, tablero)
-      g.drawImage(image, x, y, anchoCelda, altoCelda, null)
+
+    def dibujarRecursivo(fila: Int, columna: Int): Unit = {
+      if (fila < filas) {
+        val x = columna * anchoCelda
+        val y = fila * altoCelda
+        g.drawImage(asignarImagen(fila * columnas + columna), x, y, anchoCelda, altoCelda, null)
+        if (columna < columnas - 1) dibujarRecursivo(fila, columna + 1)
+        else dibujarRecursivo(fila + 1, 0)
+      }
     }
 
+    dibujarRecursivo(0, 0)
+    
     if (tab.comprobarTablero(tablero)) {
       tablero = tab.generarFichas(tab.bajarFichas(tablero, columnas, columnas * filas - 1), dificultad, columnas)
-      Thread.sleep(300)
       this.repaint()
+      Thread.sleep(300)
     }
     else if (modo == 'a') {
       val pos = tab.eliminarMasFichas(tablero, 0, 0, filas * columnas - 1, columnas, dificultad)
@@ -83,25 +85,26 @@ class Canvas(tabIn:List[Int], col:Int, fil:Int, mod:Char, dif:Int, tam:Int) exte
     }
     tablero = tabAux
     this.repaint()
+    Thread.sleep(300)
   }
 
-  private def asignarImagen(pos:Int, tablero:List[Int]): BufferedImage = {
+  private def asignarImagen(pos:Int): BufferedImage = {
     tab.getElem(pos, tablero) match {
-      case 0 => i0
-      case 1 => i1
-      case 2 => i2
-      case 3 => i3
-      case 4 => i4
-      case 5 => i5
-      case 6 => i6
-      case 8 => i7
-      case 9 => i8
-      case 11 => i9
-      case 12 => i10
-      case 13 => i11
-      case 14 => i12
-      case 15 => i13
-      case 16 => i14
+      case 0 => imagenes.head
+      case 1 => imagenes(1)
+      case 2 => imagenes(2)
+      case 3 => imagenes(3)
+      case 4 => imagenes(4)
+      case 5 => imagenes(5)
+      case 6 => imagenes(6)
+      case 8 => imagenes(7)
+      case 9 => imagenes(8)
+      case 11 => imagenes(9)
+      case 12 => imagenes(10)
+      case 13 => imagenes(11)
+      case 14 => imagenes(12)
+      case 15 => imagenes(13)
+      case 16 => imagenes(14)
     }
   }
 }
