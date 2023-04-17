@@ -23,7 +23,6 @@ class Tablero() {
     val elem = getElem(cordY * col + cordX, tablero)
     elem match {
       case _ if elem < 7 =>
-        //sustituirFicha(eliminarFichas(tablero, elem, lengthCustom(tablero) - 1, cordY * col + cordX, col), cordY * col + cordX, elem, dif)
         sustituirFicha(eliminarFichas2(tablero, cordY * col + cordX, col, lengthCustom(tablero) / col, elem), cordY * col + cordX, elem, dif)
       case 8 =>
         (activarBomba(tablero, cordY * col + cordX, col, rand.nextInt(2)), false)
@@ -134,63 +133,6 @@ class Tablero() {
   }
 
   @tailrec
-  private def eliminarFichas(tablero:List[Int], elem:Int, pos:Int, posFin:Int, col:Int): List[Int] = {
-    pos match {
-      case -1 => tablero
-      case _ =>
-        if (getElem(pos, tablero) == elem && buscarCamino(tablero, pos, posFin, col, lengthCustom(tablero) / col, elem))
-          eliminarFichas(insertar(0, pos, tablero), elem, pos - 1, posFin, col)
-
-        else
-          eliminarFichas(tablero, elem, pos - 1, posFin, col)
-    }
-  }
-
-  private def buscarCamino(tablero: List[Int], posIni: Int, posFin: Int, col: Int, fil: Int, elem: Int): Boolean = {
-    if (posIni == posFin) true
-
-    else {
-      val tabAux = insertar(-1, posIni, tablero)
-      if ((posIni + 1) % col != 0) {
-        if (getElem(posIni + 1, tablero) == elem) {
-          if (buscarCamino(tabAux, posIni + 1, posFin, col, fil, elem)) return true
-        }
-        else if (getElem(posIni + 1, tablero) == 0) {
-          return true
-        }
-      }
-
-      if (posIni % col != 0) {
-        if (getElem(posIni - 1, tablero) == elem) {
-          if (buscarCamino(tabAux, posIni - 1, posFin, col, fil, elem)) return true
-        }
-        else if (getElem(posIni - 1, tablero) == 0) {
-          return true
-        }
-      }
-
-      if (posIni >= col) {
-        if (getElem(posIni - col, tablero) == elem) {
-          if (buscarCamino(tabAux, posIni - col, posFin, col, fil, elem)) return true
-        }
-        else if (getElem(posIni - col, tablero) == 0) {
-          return true
-        }
-      }
-
-      if (posIni < col * (fil - 1))
-        if (getElem(posIni + col, tablero) == elem) {
-          if (buscarCamino(tabAux, posIni + col, posFin, col, fil, elem)) return true
-        }
-        else if (getElem(posIni + col, tablero) == 0) {
-          return true
-        }
-
-      false
-    }
-  }
-
-  @tailrec
   private def mostrarTablero(x:List[Int], n:Int): Unit = {
     x match {
       case Nil =>  print("\n" + "---" * (n - 1) + "----")
@@ -283,30 +225,6 @@ class Tablero() {
         val eliminadas = contarFichasEliminadas(tabAux)
         if (eliminadas > masEliminadas) eliminarMasFichas(tablero, eliminadas, pos, pos - 1, col, dif)
         else eliminarMasFichas(tablero, masEliminadas, mejorPos, pos - 1, col, dif)
-    }
-  }
-
-  def ejecutarMovimiento(tablero: List[Int], pos:Int, col: Int): Int = {
-    val elem = getElem(pos, tablero)
-    elem match {
-      case _ if elem < 7 =>
-        contarFichasEliminadas(eliminarFichas2(tablero, pos, col, lengthCustom(tablero) / col, elem))
-      case 8 =>
-        contarFichasEliminadas(activarBomba(tablero, pos, col, rand.nextInt(2)))
-      case 9 =>
-        contarFichasEliminadas(activarTnt(tablero, pos, col))
-      case _ =>
-        contarFichasEliminadas(insertar(0, pos, activarRompe(tablero, elem % 10)))
-    }
-  }
-
-  @tailrec
-  private def buscarMejorMovimiento(tablero:List[Int], pos:Int, mPos:Int, mValor:Int): Int = {
-    tablero match {
-      case Nil => mPos
-      case _ =>
-        if (tablero.head > mValor) buscarMejorMovimiento(tablero.tail, pos + 1, pos, tablero.head)
-        else buscarMejorMovimiento(tablero.tail, pos + 1, mPos, mValor)
     }
   }
 

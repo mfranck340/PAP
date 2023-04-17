@@ -2,6 +2,7 @@ import java.awt.{Color, RenderingHints}
 import java.awt.image.BufferedImage
 import java.io.File
 import javax.imageio.ImageIO
+import scala.annotation.tailrec
 import scala.swing._
 import scala.swing.event._
 
@@ -11,6 +12,7 @@ case class SalirEvent() extends Event
 // --------------------------------------------------------------------
 class Canvas(tabIn:List[Int], col:Int, fil:Int, mod:Char, dif:Int, tam:Int) extends Component {
   private val tab = new Tablero()
+
   private val filas = fil
   private val columnas = col
   private val dificultad = dif
@@ -53,6 +55,7 @@ class Canvas(tabIn:List[Int], col:Int, fil:Int, mod:Char, dif:Int, tam:Int) exte
     super.paintComponent(g)
     g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
 
+    @tailrec
     def dibujarRecursivo(fila: Int, columna: Int): Unit = {
       if (fila < filas) {
         val x = columna * anchoCelda
@@ -64,7 +67,7 @@ class Canvas(tabIn:List[Int], col:Int, fil:Int, mod:Char, dif:Int, tam:Int) exte
     }
 
     dibujarRecursivo(0, 0)
-    
+
     if (tab.comprobarTablero(tablero)) {
       tablero = tab.generarFichas(tab.bajarFichas(tablero, columnas, columnas * filas - 1), dificultad, columnas)
       this.repaint()
@@ -116,14 +119,8 @@ class UI() extends MainFrame {
   private val size_font = 18
   private val tab = new Tablero()
 
-  private var col:Int = _
-  private var fil:Int = _
-  private var modo:Char = _
-  private var dif:Int = _
   private var vidas = 5
   private val tam_celda = 75
-  private var tablero:List[Int] = _
-  private var canvas:Canvas = _
   title = "Cundy Crosh Soga"
 
   //----------------------------------------------------------------------------
@@ -178,7 +175,6 @@ class UI() extends MainFrame {
   private def crearPantallaDatos(): BoxPanel = {
     new BoxPanel(Orientation.Vertical) {
       preferredSize = new Dimension(image.getWidth, image.getHeight)
-
       override def paintComponent(g: Graphics2D): Unit = {
         super.paintComponent(g)
         g.drawImage(image, 0, 0, null)
@@ -227,7 +223,6 @@ class UI() extends MainFrame {
         border = Swing.EmptyBorder(10, 10, 10, 10)
         background = new Color(0, 0, 0, 0)
       }
-
       border = Swing.EmptyBorder(90, 190, 80, 190)
     }
   }
@@ -238,12 +233,13 @@ class UI() extends MainFrame {
     new BoxPanel(Orientation.Vertical) {
       preferredSize = new Dimension(col * tam_celda + 40, fil * tam_celda + 40 + 50)
       background = new Color(255, 64, 160)
-      tablero = tab.inicializarTablero(col * fil)
+      val tablero: List[Int] = tab.inicializarTablero(col * fil)
       private val labelVidas = new Label("Vidas: " + vidas) {
         font = new Font("Arial", java.awt.Font.BOLD, 25)
         foreground = new Color(255, 255, 255)
       }
-      canvas =  new Canvas(tablero, col, fil, modo, dif, tam_celda)
+      val canvas =  new Canvas(tablero, col, fil, modo, dif, tam_celda)
+
       contents += labelVidas
       contents += Swing.VStrut(10)
       contents += canvas
@@ -274,12 +270,10 @@ class UI() extends MainFrame {
   private def crearPantallaFin(): BoxPanel = {
     new BoxPanel(Orientation.Vertical) {
       preferredSize = new Dimension(image.getWidth, image.getHeight)
-
       override def paintComponent(g: Graphics2D): Unit = {
         super.paintComponent(g)
         g.drawImage(imagenFin, 0, 0, null)
       }
-
       contents += new BoxPanel(Orientation.Horizontal) {
         contents += Swing.HGlue
         contents += new Label("GAME OVER") {
@@ -305,11 +299,7 @@ class UI() extends MainFrame {
   }
 
   private def comenzarJuego(): Unit = {
-    col = colField.text.toInt
-    fil = filField.text.toInt
-    modo = if (modeComboBox.item == "Automatico") 'a' else 'm'
-    dif = if (difficultyComboBox.item == "Facil") 4 else 6
-    contents = crearPantallaGame(col, fil, modo, dif)
+    contents = crearPantallaGame(colField.text.toInt, filField.text.toInt, if (modeComboBox.item == "Automatico") 'a' else 'm', if (difficultyComboBox.item == "Facil") 4 else 6)
   }
 
   private def finJuego(): Unit = {
