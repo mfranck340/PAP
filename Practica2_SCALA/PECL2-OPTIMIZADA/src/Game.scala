@@ -1,27 +1,15 @@
 import scala.collection.parallel.CollectionConverters.ImmutableIterableIsParallelizable
 import scala.annotation.tailrec
 
-class Game {
+class Game(args: List[String]) {
 
   private val vidas = 5
   private val tab = new Tablero
 
   def run(): Unit = {
     println("\n- CUNDY CROSH SOGA -\n")
-    /*println("Introduce el numero de columnas del tablero: ")
-    val col = scala.io.StdIn.readInt()
-    println("Introduce el numero de filas del tablero: ")
-    val fil = scala.io.StdIn.readInt()
-    println("Introduce la dificultad del juego (1 - facil / 2 - dificil): ")*/
-    //val dif = if (scala.io.StdIn.readChar() == '1')  4 else 6
-    /*println("Introduce el modo de juego (a - automatico / m - manual): ")
-    val mod = scala.io.StdIn.readChar()*/
 
-    //Variables de prueba
-    val col = 7
-    val fil = 7
-    val dif = 6
-    val mod = 'a'
+    val(col, fil, dif, mod) = if (lengthArgumentos(args) == 4) obtenerDatos(args) else pedirDatos()
     val tablero = tab.inicializarTablero(fil * col)
 
     println("- START GAME :) - ")
@@ -52,6 +40,34 @@ class Game {
     }
   }
 
+  private def pedirDatos(): (Int, Int, Int, Char) = {
+    println("Introduce el numero de columnas del tablero: ")
+    val col = scala.io.StdIn.readInt()
+    println("Introduce el numero de filas del tablero: ")
+    val fil = scala.io.StdIn.readInt()
+    println("Introduce la dificultad del juego (1 - facil / 2 - dificil): ")
+    val dif = if (scala.io.StdIn.readChar() == '1') 4 else 6
+    println("Introduce el modo de juego (a - automatico / m - manual): ")
+    val mod = scala.io.StdIn.readChar()
+    (col, fil, dif, mod)
+  }
+
+  private def obtenerDatos(args:List[String]): (Int, Int, Int, Char) =  {
+    val mod = args.head(0)
+    val dif = if (args(1)(0) == '1') 4 else 6
+    val col = args(2).toInt
+    val fil = args(3).toInt
+    println(s"Datos Introducidos: columnas:$col, filas:$fil, dificultad:$dif, modo:$mod")
+    (col, fil, dif, mod)
+  }
+
+  private def lengthArgumentos(args:List[String]): Int = {
+    args match {
+      case Nil => 0
+      case _ => 1 + lengthArgumentos(args.tail)
+    }
+  }
+
   //Función para obtener las coordenadas del usuario (forma manual)
   private def getManual(col: Int, fil: Int): (Int, Int) = {
     print(s"\nIntroduce la columna (0 - ${col - 1}): ")                                 //Solicitamos la coordenada X (columna)
@@ -65,10 +81,7 @@ class Game {
   //Función para obtener las coordenadas (forma automática)
   private def getAutomatico(tablero: List[Int], col: Int, fil: Int, dif: Int): (Int, Int) = {
     val pos = tab.eliminarMasFichas(tablero, 0, 0, fil * col - 1, col, dif)
-    val x = pos % col                                                                   //Calculamos la coordenada X en función de la posición obtenida
-    val y = (pos - x) / col                                                             //Calculamos la coordenada Y en función de la posición obtenida y la coordenada X
-    println(s"\nCoordenadas ($x, $y)")                                                  //Mostramos las coordenadas
-    (x, y)                                                                              //Devolvemos una tupla con las coordenadas
+    getCoord(pos, col)                                                                              //Devolvemos una tupla con las coordenadas
   }
 
   //Función para obtener las coordenadas (forma automática y paralela)
@@ -76,10 +89,14 @@ class Game {
     val tabAux = crearTableroDePosiciones(fil * col - 1, 0).par                   //Creamos el tablero de posiciones como una lista paralela
     val contadores = tabAux.map(x => tab.ejecutarMovimiento(tablero, x, col)).toList    //Ejecutamos la función ejecutarMovimiento() en todas las posiciones del tablero de posiciones y lo guardamos en otra lista
     val pos = tab.buscarMejorMovimiento(contadores, 0, 0, 0)        //Obtenemos la posición con el valor más alto de esa nueva lista
+    getCoord(pos, col)                                                                              //Devolvemos una tupla con las coordenadas
+  }
+
+  private def getCoord(pos:Int, col:Int): (Int, Int) = {
     val x = pos % col                                                                   //Calculamos la coordenada X en función de la posición obtenida
     val y = (pos - x) / col                                                             //Calculamos la coordenada Y en función de la posición obtenida y la coordenada X
     println(s"\nCoordenadas ($x, $y)")                                                  //Mostramos las coordenadas
-    (x, y)                                                                              //Devolvemos una tupla con las coordenadas
+    (x, y)
   }
 
   //Función recursiva que crea una lista con el número de cada posición en sus elementos
