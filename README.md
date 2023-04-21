@@ -6,3 +6,6 @@ Videojuego implementado con CUDA
 
 2. Cundy Crosh Soga
 Videojuego implementado con SCALA
+
+3. Cundy Crosh Soga
+Videojuego implementado con servicios CLOUD

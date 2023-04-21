@@ -128,7 +128,7 @@ class UI() extends MainFrame {
   private val tab = new Tablero()                                                 //Creamos el objeto tablero
 
   private val vidas = 5                                                           //Número de vidas
-  private val tam_celda = 75                                                      //Inicializamos el tamaño de las celdas
+  private val tam_celda = 40                                                    //Inicializamos el tamaño de las celdas
   title = "Cundy Crosh Soga"                                                      //Indicamos el título del juego
 
   //----------------------------------------------------------------------------
