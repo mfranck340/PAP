@@ -127,7 +127,7 @@ class UI() extends MainFrame {
   private val size_font = 18                                                      //Inicializamos el tamaño de la fuente
   private val tab = new Tablero()                                                 //Creamos el objeto tablero
 
-  private var vidas = 5                                                           //Número de vidas
+  private val vidas = 5                                                           //Número de vidas
   private val tam_celda = 75                                                      //Inicializamos el tamaño de las celdas
   title = "Cundy Crosh Soga"                                                      //Indicamos el título del juego
 
@@ -248,23 +248,29 @@ class UI() extends MainFrame {
       preferredSize = new Dimension(col * tam_celda + 40, fil * tam_celda + 40 + 50)  //Redimensionamos la ventana al tamaño del tablero
       background = new Color(255, 64, 160)                                        //Ponemos un color de fondo
       val tablero: List[Int] = tab.inicializarTablero(col * fil)
-      private val labelVidas = new Label("Vidas: " + vidas) {                     //Creamos una etiqueta que ponga "Vidas"
+      private val labelVidas = new Label(vidas.toString) {                     //Creamos una etiqueta que ponga "Vidas"
         font = new Font("Arial", java.awt.Font.BOLD, 25)
         foreground = new Color(255, 255, 255)
       }
       val canvas =  new Canvas(tablero, col, fil, modo, dif, tam_celda)
 
-      contents += labelVidas
+      contents += new BoxPanel(Orientation.Horizontal) {
+        background = new Color(0, 0, 0, 0)
+        contents += new Label("Vidas: ") { //Creamos una etiqueta que ponga "Vidas"
+          font = new Font("Arial", java.awt.Font.BOLD, 25)
+          foreground = new Color(255, 255, 255)
+        }
+        contents += labelVidas
+      }
       contents += Swing.VStrut(10)                                                //Dejamos espacio entre los componentes
       contents += canvas
 
       listenTo(canvas)
       reactions += {
-        case SalirEvent() =>                                                      //Evento para reducir vidas y acabar el juego
-          vidas -= 1                                                              //Restamos una vida
-          labelVidas.text = "Vidas: " + vidas                                     //Actualizamos la etiqueta de las vidas
-          if (vidas == 0) {
-            vidas = 5                                                             //Reiniciamos las vidas
+        case SalirEvent() =>
+          val newVidas = labelVidas.text.toInt - 1
+          labelVidas.text = newVidas.toString                                     //Actualizamos la etiqueta de las vidas
+          if (newVidas == 0) {
             finJuego()                                                            //Cambiamos a la ventana de Game Over
           }
       }
