@@ -1,4 +1,4 @@
-import java.io.{File, FileWriter, PrintWriter}
+import java.io.{FileWriter}
 import java.time.LocalDateTime
 import scala.annotation.tailrec
 
