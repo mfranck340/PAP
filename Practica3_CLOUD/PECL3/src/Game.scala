@@ -1,3 +1,5 @@
+import java.io.{File, FileWriter, PrintWriter}
+import java.time.LocalDateTime
 import scala.annotation.tailrec
 
 class Game(args: List[String]) {
@@ -9,27 +11,43 @@ class Game(args: List[String]) {
   def run(): Unit = {
     println("\n- CUNDY CROSH SOGA -\n")
 
-    val(col, fil, dif, mod) = if (lengthArgumentos(args) == 4) obtenerDatos(args) else pedirDatos()
+    //val(col, fil, dif, mod) = if (lengthArgumentos(args) == 4) obtenerDatos(args) else pedirDatos()
+    val col = 10
+    val fil = 10
+    val dif = 6
+    val mod = 'a'
     val tablero = tab.inicializarTablero(fil * col)
 
     println("- START GAME :) - ")
+    val startTime = System.nanoTime()
+    val puntuacion = runAux(col, fil, tab.actualizarTablero(tablero, col, dif), dif, mod, vidas, 0)         //Iniciamos el juego
 
-    runAux(col, fil, tab.actualizarTablero(tablero, col, dif), dif, mod, vidas)         //Iniciamos el juego
-
+    println(s"\n- PUNTUACION: $puntuacion -")
     println("\n- GAME OVER :( -\n")
+    val endTime = System.nanoTime()
+
+    //Almacenar Puntuación
+    val time = (endTime - startTime) / 1000000000
+    print("Introduce tu nombre: ")
+    val name = scala.io.StdIn.readLine()
+
+    val filename = "puntuacion.txt"
+    val file = new FileWriter(filename, true)
+    file.write(s"$name\t\t$puntuacion\t\t${LocalDateTime.now()}\t\t$time\n")
+    file.close()
   }
 
   //Función donde se ejecutará el juego
   @tailrec
-  private def runAux(col: Int, fil: Int, tablero: List[Int], dif: Int, mod: Char, vidas: Int): Unit = {
+  private def runAux(col: Int, fil: Int, tablero: List[Int], dif: Int, mod: Char, vidas: Int, puntuacion:Int): Int = {
     tab.mostrarTablero(tablero, col)                                                    //Mostramos el tablero
-    println(s"\nVIDAS: $vidas")                                                         //Mostramos las vidas
+    println(s"\nVIDAS: $vidas\tPUNTUACION: $puntuacion")                                                         //Mostramos las vidas
     vidas match {
-      case 0 =>                                                                         //Si no nos quedan vidas, salimos de la función
+      case 0 => puntuacion                                                                        //Si no nos quedan vidas, salimos de la función
       case _ =>                                                                         //Si quedan vidas, continuamos la recursividad
         val (x, y) = if (mod == 'a') getAutomatico(col, fil) else getManual(col, fil)   //Comprobamos si se ejecutará de forma manual o automática y llamamos a la respectiva función para obtener las coordenadas
-        val (tabAux, restar) = tab.interactuarConTablero(tablero, x, y, col, dif)       //Interactuamos con el tablero utilizando las coordenadas
-        runAux(col, fil, tabAux, dif, mod, if (restar) vidas - 1 else vidas)            //Llamamos recursivamente a la función restando una vida si no se ha eliminado ninguna ficha
+        val (tabAux, restar, puntos) = tab.interactuarConTablero(tablero, x, y, col, dif)       //Interactuamos con el tablero utilizando las coordenadas
+        runAux(col, fil, tabAux, dif, mod, if (restar) vidas - 1 else vidas, puntuacion + (puntos * (if (dif == 4) 1 else 2)))            //Llamamos recursivamente a la función restando una vida si no se ha eliminado ninguna ficha
     }
   }
 

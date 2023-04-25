@@ -29,23 +29,36 @@ class Tablero() {
   }
 
   //Función que realiza cambios en el tablero dependiendo de las coordenadas introducidas
-  def interactuarConTablero(tablero:List[Int], cordX:Int, cordY:Int, col:Int, dif:Int): (List[Int], Boolean) = {
-    val (tabAux, vidas) = realizarMovimiento(tablero, cordX, cordY, col, dif)             //Realizamos el movimiento con las coordenadas
-    (actualizarTablero(tabAux, col, dif), vidas)                                          //Devolvemos el tablero actualizado junto con las vidas que tiene el usuario tras realizar el movimiento
+  def interactuarConTablero(tablero:List[Int], cordX:Int, cordY:Int, col:Int, dif:Int): (List[Int], Boolean, Int) = {
+    val (tabAux, vidas, puntuacion) = realizarMovimiento(tablero, cordX, cordY, col, dif)             //Realizamos el movimiento con las coordenadas
+    (actualizarTablero(tabAux, col, dif), vidas, puntuacion)                                          //Devolvemos el tablero actualizado junto con las vidas que tiene el usuario tras realizar el movimiento
   }
 
   //Función que realiza el movimiento adecuado dependiendo del elemento que ha sido pulsado
-  private def realizarMovimiento(tablero:List[Int], cordX:Int, cordY:Int, col:Int, dif:Int): (List[Int], Boolean) = {
+  private def realizarMovimiento(tablero:List[Int], cordX:Int, cordY:Int, col:Int, dif:Int): (List[Int], Boolean, Int) = {
     val elem = getElem(cordY * col + cordX, tablero)                                      //Obtenemos el elemento que se encuentra en la posición del tablero que se ha pulsado
     elem match {
+
       case _ if elem < 7 =>                                                               //Si el elemento es menor que 7, es una ficha normal
-        sustituirFicha(eliminarFichas(tablero, cordY * col + cordX, col, lengthCustom(tablero) / col, elem), cordY * col + cordX, elem, dif)
+        val tabAux = eliminarFichas(tablero, cordY * col + cordX, col, lengthCustom(tablero) / col, elem)
+        val contador = contarFichasEliminadas(tabAux)
+        val (tabAux2, restar) = sustituirFicha(tabAux, cordY * col + cordX, elem, dif)
+        (tabAux2, restar, (if (!restar) contador + (contador / 10) else 0))
+
       case 8 =>                                                                           //Si el elemento es 8, hacemos explotar la bomba
-        (activarBomba(tablero, cordY * col + cordX, col, rand.nextInt(2)), false)
+        val tabAux = activarBomba(tablero, cordY * col + cordX, col, rand.nextInt(2))
+        val contador = contarFichasEliminadas(tabAux)
+        (tabAux, false, 5 + contador + (contador / 10))
+
       case 9 =>                                                                           //Si el elemento es 9, hacemos estallar la TNT
-        (activarTnt(tablero, cordY * col + cordX, col), false)
+        val tabAux = activarTnt(tablero, cordY * col + cordX, col)
+        val contador = contarFichasEliminadas(tabAux)
+        (tabAux, false, 10 + contador + (contador / 10))
+
       case _ =>                                                                           //En cualquier otro caso, activamos el rompecabezas e insertamos un bloque de aire en su posición para no generar ningún bloque especial
-        (insertar(0, cordY * col + cordX, activarRompe(tablero, elem % 10)), false)
+        val tabAux = insertar(0, cordY * col + cordX, activarRompe(tablero, elem % 10))
+        val contador = contarFichasEliminadas(tabAux)
+        (tabAux, false,  15 + contador + (contador / 10))
     }
   }
 
