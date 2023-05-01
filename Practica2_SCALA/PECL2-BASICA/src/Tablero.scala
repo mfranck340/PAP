@@ -219,7 +219,7 @@ class Tablero() {
   }
 
   //Función recursiva para bajar las fichas del tablero cuando tienen bloques de aire en las posiciones inferiores
-  @tailrec
+    @tailrec
   private def bajarFichas(tablero:List[Int], col:Int, pos:Int): List[Int] = {
     if (pos == col - 1)
       tablero                                                                             //Si hemos recorrido el tablero entero a excepción de la primera fila, devolvemos el tablero actual

@@ -1,6 +1,7 @@
-import java.io.{FileWriter}
-import java.time.LocalDateTime
+import java.time.LocalDate
+import java.time.LocalTime
 import scala.annotation.tailrec
+import java.sql.{Connection, DriverManager}
 
 class Game(args: List[String]) {
 
@@ -26,15 +27,21 @@ class Game(args: List[String]) {
     println("\n- GAME OVER :( -\n")
     val endTime = System.nanoTime()
 
-    //Almacenar Puntuación
+    val url = "jdbc:postgresql://localhost:5432/pap_pecl3"
+    val user = "postgres"
+    val password = "postgres"
+
+    val connection: Connection = DriverManager.getConnection(url, user, password)
+
     val time = (endTime - startTime) / 1000000000
     print("Introduce tu nombre: ")
     val name = scala.io.StdIn.readLine()
 
-    val filename = "puntuacion.txt"
-    val file = new FileWriter(filename, true)
-    file.write(s"$name\t\t$puntuacion\t\t${LocalDateTime.now()}\t\t$time\n")
-    file.close()
+    val statement = connection.createStatement()
+    val query = s"INSERT INTO puntuacion (nombre, puntos, duracion, fecha, hora) VALUES ('$name', $puntuacion, $time, '${LocalDate.now()}', '${LocalTime.now()}')"
+    statement.executeUpdate(query)
+
+    connection.close()
   }
 
   //Función donde se ejecutará el juego
