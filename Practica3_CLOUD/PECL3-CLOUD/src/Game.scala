@@ -38,7 +38,7 @@ class Game(args: List[String]) {
     val name = scala.io.StdIn.readLine()
 
     val statement = connection.createStatement()
-    val query = s"INSERT INTO puntuacion (nombre, puntos, duracion, fecha, hora) VALUES ('$name', $puntuacion, $time, '${LocalDate.now()}', '${LocalTime.now()}')"
+    val query = s"INSERT INTO puntuacion (nombre, puntos, duracion, fecha) VALUES ('$name', $puntuacion, $time, '${LocalDate.now()} ${LocalTime.now()}')"
     statement.executeUpdate(query)
 
     connection.close()
