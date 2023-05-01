@@ -1,7 +1,9 @@
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.format
 import scala.annotation.tailrec
 import java.sql.{Connection, DriverManager}
+import java.time.format.DateTimeFormatter
 
 class Game(args: List[String]) {
 
@@ -38,7 +40,8 @@ class Game(args: List[String]) {
     val name = scala.io.StdIn.readLine()
 
     val statement = connection.createStatement()
-    val query = s"INSERT INTO puntuacion (nombre, puntos, duracion, fecha) VALUES ('$name', $puntuacion, $time, '${LocalDate.now()} ${LocalTime.now()}')"
+    val format1 = DateTimeFormatter.ofPattern("HH:mm:ss")
+    val query = s"INSERT INTO puntuacion (nombre, puntos, duracion, fecha) VALUES ('$name', $puntuacion, $time, '${LocalDate.now()} ${format1.format(LocalTime.now())}')"
     statement.executeUpdate(query)
 
     connection.close()
