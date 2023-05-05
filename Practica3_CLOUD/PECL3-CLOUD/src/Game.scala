@@ -1,9 +1,4 @@
-import java.time.LocalDate
-import java.time.LocalTime
-import java.time.format
 import scala.annotation.tailrec
-import java.sql.{Connection, DriverManager}
-import java.time.format.DateTimeFormatter
 
 class Game(args: List[String]) {
 
@@ -29,9 +24,9 @@ class Game(args: List[String]) {
     println("\n- GAME OVER :( -\n")
     val endTime = System.nanoTime()
 
-    val url = "jdbc:postgresql://localhost:5432/pap_pecl3"
-    val user = "postgres"
-    val password = "postgres"
+    /*val url = "jdbc:postgresql://pap-pecl-3.postgres.database.azure.com:5432/pap_pecl3"
+    val user = "Student@pap-pecl-3"
+    val password = "Pa55w0rd1234"
 
     val connection: Connection = DriverManager.getConnection(url, user, password)
 
@@ -44,7 +39,18 @@ class Game(args: List[String]) {
     val query = s"INSERT INTO puntuacion (nombre, puntos, duracion, fecha) VALUES ('$name', $puntuacion, $time, '${LocalDate.now()} ${format1.format(LocalTime.now())}')"
     statement.executeUpdate(query)
 
-    connection.close()
+    connection.close()*/
+
+
+    import scalaj.http._
+
+    val response = Http("http://express2458515403.azurewebsites.net/puntuacion")
+      .postData("{\"nombre\":\"Jose\",\"puntos\":\"30\",\"duracion\":\"44\",\"fecha\":\"2023-05-05 20:13:46\"}")
+      .header("content-type", "application/json")
+      .asString
+    println(response)
+
+
   }
 
   //Función donde se ejecutará el juego

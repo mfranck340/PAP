@@ -10,5 +10,6 @@
     <orderEntry type="library" name="scala-sdk-2.13.10" level="application" />
     <orderEntry type="library" name="scala-sdk-2.13.10 (2)" level="application" />
     <orderEntry type="library" name="postgresql" level="project" />
+    <orderEntry type="library" name="scalaj.http_2.13" level="project" />
   </component>
 </module>
