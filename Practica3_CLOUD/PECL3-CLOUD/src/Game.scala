@@ -1,3 +1,5 @@
+import java.time.format.DateTimeFormatter
+import java.time.{LocalDate, LocalTime}
 import scala.annotation.tailrec
 
 class Game(args: List[String]) {
@@ -29,13 +31,14 @@ class Game(args: List[String]) {
     val password = "Pa55w0rd1234"
 
     val connection: Connection = DriverManager.getConnection(url, user, password)
-
+*/
     val time = (endTime - startTime) / 1000000000
     print("Introduce tu nombre: ")
     val name = scala.io.StdIn.readLine()
-
-    val statement = connection.createStatement()
     val format1 = DateTimeFormatter.ofPattern("HH:mm:ss")
+/*
+    val statement = connection.createStatement()
+
     val query = s"INSERT INTO puntuacion (nombre, puntos, duracion, fecha) VALUES ('$name', $puntuacion, $time, '${LocalDate.now()} ${format1.format(LocalTime.now())}')"
     statement.executeUpdate(query)
 
@@ -45,7 +48,7 @@ class Game(args: List[String]) {
     import scalaj.http._
 
     val response = Http("http://express2458515403.azurewebsites.net/puntuacion")
-      .postData("{\"nombre\":\"Jose\",\"puntos\":\"30\",\"duracion\":\"44\",\"fecha\":\"2023-05-05 20:13:46\"}")
+      .postData(s"{\"nombre\":\"$name\",\"puntos\":\"$puntuacion\",\"duracion\":\"$time\",\"fecha\":\"'${LocalDate.now()} ${format1.format(LocalTime.now())}'\"}")
       .header("content-type", "application/json")
       .asString
     println(response)
