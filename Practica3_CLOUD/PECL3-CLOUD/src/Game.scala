@@ -48,7 +48,7 @@ class Game(args: List[String]) {
     import scalaj.http._
 
     val response = Http("http://express2458515403.azurewebsites.net/puntuacion")
-      .postData(s"{\"nombre\":\"$name\",\"puntos\":\"$puntuacion\",\"duracion\":\"$time\",\"fecha\":\"'${LocalDate.now()} ${format1.format(LocalTime.now())}'\"}")
+      .postData(s"{\"nombre\":\"$name\",\"puntos\":\"$puntuacion\",\"duracion\":\"$time\",\"fecha\":\"${LocalDate.now()} ${format1.format(LocalTime.now())}\"}")
       .header("content-type", "application/json")
       .asString
     println(response)
