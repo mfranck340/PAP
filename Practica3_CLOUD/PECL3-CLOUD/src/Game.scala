@@ -1,6 +1,7 @@
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDate, LocalTime}
 import scala.annotation.tailrec
+import scalaj.http._
 
 class Game(args: List[String]) {
 
@@ -11,11 +12,7 @@ class Game(args: List[String]) {
   def run(): Unit = {
     println("\n- CUNDY CROSH SOGA -\n")
 
-    //val(col, fil, dif, mod) = if (lengthArgumentos(args) == 4) obtenerDatos(args) else pedirDatos()
-    val col = 10
-    val fil = 10
-    val dif = 6
-    val mod = 'a'
+    val(col, fil, dif, mod) = if (lengthArgumentos(args) == 4) obtenerDatos(args) else pedirDatos()
     val tablero = tab.inicializarTablero(fil * col)
 
     println("- START GAME :) - ")
@@ -26,26 +23,10 @@ class Game(args: List[String]) {
     println("\n- GAME OVER :( -\n")
     val endTime = System.nanoTime()
 
-    /*val url = "jdbc:postgresql://pap-pecl-3.postgres.database.azure.com:5432/pap_pecl3"
-    val user = "Student@pap-pecl-3"
-    val password = "Pa55w0rd1234"
-
-    val connection: Connection = DriverManager.getConnection(url, user, password)
-*/
     val time = (endTime - startTime) / 1000000000
     print("Introduce tu nombre: ")
     val name = scala.io.StdIn.readLine()
     val format1 = DateTimeFormatter.ofPattern("HH:mm:ss")
-/*
-    val statement = connection.createStatement()
-
-    val query = s"INSERT INTO puntuacion (nombre, puntos, duracion, fecha) VALUES ('$name', $puntuacion, $time, '${LocalDate.now()} ${format1.format(LocalTime.now())}')"
-    statement.executeUpdate(query)
-
-    connection.close()*/
-
-
-    import scalaj.http._
 
     val response = Http("http://express241729741.azurewebsites.net/puntuacion")
       .postData(s"{\"nombre\":\"$name\",\"puntos\":\"$puntuacion\",\"duracion\":\"$time\",\"fecha\":\"${LocalDate.now()} ${format1.format(LocalTime.now())}\"}")
