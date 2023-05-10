@@ -15,37 +15,39 @@ class Game(args: List[String]) {
     val(col, fil, dif, mod) = if (lengthArgumentos(args) == 4) obtenerDatos(args) else pedirDatos()
     val tablero = tab.inicializarTablero(fil * col)
 
-    println("- START GAME :) - ")
+    println("- START GAME :) - ")                                                                                       //Iniciamos el juego
     val startTime = System.nanoTime()
-    val puntuacion = runAux(col, fil, tab.actualizarTablero(tablero, col, dif), dif, mod, vidas, 0)         //Iniciamos el juego
+    val puntuacion = runAux(col, fil, tab.actualizarTablero(tablero, col, dif), dif, mod, vidas, 0)           //Obtenemos la puntuacion del usuario una vez terminada la partido
 
     println(s"\n- PUNTUACION: $puntuacion -")
     println("\n- GAME OVER :( -\n")
     val endTime = System.nanoTime()
 
+    //Se recogen los datos necesarios para almacenar en la base de datos
     val time = (endTime - startTime) / 1000000000
     print("Introduce tu nombre: ")
     val name = scala.io.StdIn.readLine()
     val format1 = DateTimeFormatter.ofPattern("HH:mm:ss")
 
+    //Realizamos el POST en el servidor express
     val response = Http("http://express241729741.azurewebsites.net/puntuacion")
       .postData(s"{\"nombre\":\"$name\",\"puntos\":\"$puntuacion\",\"duracion\":\"$time\",\"fecha\":\"${LocalDate.now()} ${format1.format(LocalTime.now())}\"}")
       .header("content-type", "application/json")
       .asString
-    println(response)
 
+    println(s"Tus resultados se han guardado $name")
   }
 
-  //Función donde se ejecutará el juego
+  //Función donde se ejecutará el juego y se obtendra la puntuacion final del usuario
   @tailrec
   private def runAux(col: Int, fil: Int, tablero: List[Int], dif: Int, mod: Char, vidas: Int, puntuacion:Int): Int = {
-    tab.mostrarTablero(tablero, col)                                                    //Mostramos el tablero
-    println(s"\nVIDAS: $vidas\tPUNTUACION: $puntuacion")                                                         //Mostramos las vidas
+    tab.mostrarTablero(tablero, col)                                                                                //Mostramos el tablero
+    println(s"\nVIDAS: $vidas\tPUNTUACION: $puntuacion")                                                            //Mostramos las vidas
     vidas match {
-      case 0 => puntuacion                                                                        //Si no nos quedan vidas, salimos de la función
-      case _ =>                                                                         //Si quedan vidas, continuamos la recursividad
-        val (x, y) = if (mod == 'a') getAutomatico(col, fil) else getManual(col, fil)   //Comprobamos si se ejecutará de forma manual o automática y llamamos a la respectiva función para obtener las coordenadas
-        val (tabAux, restar, puntos) = tab.interactuarConTablero(tablero, x, y, col, dif)       //Interactuamos con el tablero utilizando las coordenadas
+      case 0 => puntuacion                                                                                          //Si no nos quedan vidas, salimos de la función
+      case _ =>                                                                                                     //Si quedan vidas, continuamos la recursividad
+        val (x, y) = if (mod == 'a') getAutomatico(col, fil) else getManual(col, fil)                               //Comprobamos si se ejecutará de forma manual o automática y llamamos a la respectiva función para obtener las coordenadas
+        val (tabAux, restar, puntos) = tab.interactuarConTablero(tablero, x, y, col, dif)                           //Interactuamos con el tablero utilizando las coordenadas
         runAux(col, fil, tabAux, dif, mod, if (restar) vidas - 1 else vidas, puntuacion + (puntos * (if (dif == 4) 1 else 2)))            //Llamamos recursivamente a la función restando una vida si no se ha eliminado ninguna ficha
     }
   }
