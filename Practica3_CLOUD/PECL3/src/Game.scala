@@ -11,11 +11,7 @@ class Game(args: List[String]) {
   def run(): Unit = {
     println("\n- CUNDY CROSH SOGA -\n")
 
-    //val(col, fil, dif, mod) = if (lengthArgumentos(args) == 4) obtenerDatos(args) else pedirDatos()
-    val col = 10
-    val fil = 10
-    val dif = 6
-    val mod = 'a'
+    val(col, fil, dif, mod) = if (lengthArgumentos(args) == 4) obtenerDatos(args) else pedirDatos()
     val tablero = tab.inicializarTablero(fil * col)
 
     println("- START GAME :) - ")

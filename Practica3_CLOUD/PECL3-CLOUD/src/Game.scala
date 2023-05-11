@@ -30,12 +30,28 @@ class Game(args: List[String]) {
     val format1 = DateTimeFormatter.ofPattern("HH:mm:ss")
 
     //Realizamos el POST en el servidor express
-    val response = Http("http://express241729741.azurewebsites.net/puntuacion")
-      .postData(s"{\"nombre\":\"$name\",\"puntos\":\"$puntuacion\",\"duracion\":\"$time\",\"fecha\":\"${LocalDate.now()} ${format1.format(LocalTime.now())}\"}")
-      .header("content-type", "application/json")
-      .asString
+    @tailrec
+    def enviarDatos(intentos:Int):Unit = {
+      println("Enviando...")
+      intentos match {
+        case 5 => println("No se ha conseguido enviar los datos")
+        case _ =>
+          try {
+            val response = Http("http://express241729741.azurewebsites.net/puntuacion")
+              .postData(s"{\"nombre\":\"$name\",\"puntos\":\"$puntuacion\",\"duracion\":\"$time\",\"fecha\":\"${LocalDate.now()} ${format1.format(LocalTime.now())}\"}")
+              .header("content-type", "application/json")
+              .asString
 
-    println(s"Tus resultados se han guardado $name")
+            println(s"$name tus datos se han almacenado de forma correcta")
+          }
+          catch {
+            case e: Exception => enviarDatos(intentos + 1)
+          }
+      }
+    }
+
+    enviarDatos(0)
+
   }
 
   //Función donde se ejecutará el juego y se obtendra la puntuacion final del usuario
